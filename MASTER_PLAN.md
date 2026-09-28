@@ -1,0 +1,1000 @@
+# TARKEN --- CASE DE DUE DILIGENCE DE FORNECEDORES
+
+## MASTER PLAN v0.2
+
+**Status:** Baseline inicial\
+**Última atualização:** 28/09/2026\
+**Responsável:** Gabriel\
+**Objetivo:** Construir o case técnico solicitado pela Tarken, com
+escopo enxuto, foco em integração de fontes públicas, consolidação de
+dados, classificação de risco e geração de CSV/PDF.
+
+------------------------------------------------------------------------
+
+# 1. REGRA DE GOVERNANÇA DO PROJETO
+
+Este documento é a **fonte de verdade do projeto**.
+
+## 1.1 Versionamento
+
+Todo planejamento deve possuir uma versão.
+
+Formato:
+
+`vMAJOR.MINOR`
+
+Exemplos:
+
+-   `v0.1` --- baseline inicial
+-   `v0.2` --- pequena alteração de escopo/processo
+-   `v1.0` --- planejamento final aprovado para implementação
+
+## 1.2 Regra de alteração
+
+O planejamento **não deve ser alterado silenciosamente**.
+
+Qualquer alteração deverá registrar:
+
+-   versão anterior;
+-   nova versão;
+-   data;
+-   motivo;
+-   impacto;
+-   decisão.
+
+Exemplo:
+
+``` text
+HISTÓRICO DE ALTERAÇÃO
+
+Versão: v0.1 → v0.2
+Data: 28/09/2026
+Motivo: [descrever]
+Alteração: [descrever]
+Impacto: [baixo/médio/alto]
+Decisão: [aprovado/rejeitado]
+```
+
+## 1.3 Regra de execução
+
+Uma etapa somente será considerada concluída quando:
+
+-   implementação realizada;
+-   teste executado;
+-   resultado validado;
+-   critério de aceite atendido;
+-   status atualizado neste documento.
+
+Não avançar deliberadamente deixando uma etapa crítica incompleta.
+
+## 1.4 Mudanças durante o desenvolvimento
+
+Se a IA de desenvolvimento sugerir algo fora do plano:
+
+1.  não aceitar automaticamente;
+2.  registrar a sugestão;
+3.  avaliar necessidade;
+4.  decidir se entra no escopo;
+5.  caso entre, atualizar a versão do Master Plan;
+6.  registrar a justificativa.
+
+------------------------------------------------------------------------
+
+# 2. OBJETIVO DO CASE
+
+Construir uma pequena aplicação web que receba uma lista de CNPJs,
+consulte três fontes públicas, consolide os dados, classifique cada
+fornecedor em:
+
+-   APROVAR
+-   REVISAR
+-   RECUSAR
+
+e permita:
+
+-   visualizar os resultados;
+-   baixar CSV;
+-   gerar PDF.
+
+O foco da avaliação é demonstrar:
+
+-   entendimento das fontes;
+-   integração;
+-   normalização;
+-   merge;
+-   tratamento de erros;
+-   diferença entre NÃO e NA;
+-   redundância das fontes do IBAMA;
+-   regra de decisão;
+-   capacidade de transformar dados em relatório útil.
+
+------------------------------------------------------------------------
+
+# 3. ESCOPO
+
+## 3.1 Obrigatório
+
+-   Entrada de múltiplos CNPJs.
+-   Normalização dos CNPJs.
+-   Validação do dígito verificador.
+-   Consulta à BrasilAPI.
+-   Consulta ao IBAMA --- Autos de Infração.
+-   Consulta ao IBAMA --- Áreas/Termos Embargados.
+-   Normalização das respostas.
+-   Merge por CNPJ.
+-   Classificação de risco.
+-   Motivo da classificação.
+-   Visualização dos resultados.
+-   Exportação CSV.
+-   Geração PDF.
+-   Tratamento de erros.
+-   Registro do status das fontes.
+-   README.
+-   Testes dos principais cenários.
+
+## 3.2 Fora do escopo do MVP
+
+-   Banco de dados.
+-   Login.
+-   Autenticação.
+-   Usuários.
+-   Permissões.
+-   Histórico persistido.
+-   Pagamentos.
+-   Microsserviços.
+-   Filas complexas.
+-   Kubernetes.
+-   IA generativa dentro do produto.
+-   Quarta fonte de dados.
+-   Dashboard analítico complexo.
+-   Infraestrutura de produção.
+
+------------------------------------------------------------------------
+
+# 4. FONTES
+
+## 4.1 Receita Federal / BrasilAPI
+
+Endpoint:
+
+`https://brasilapi.com.br/api/cnpj/v1/{cnpj}`
+
+Dados esperados, quando disponíveis:
+
+-   CNPJ;
+-   razão social;
+-   situação cadastral;
+-   data de abertura;
+-   CNAE;
+-   endereço;
+-   telefone.
+
+A integração deve tratar:
+
+-   CNPJ inválido;
+-   CNPJ não encontrado;
+-   erro HTTP;
+-   timeout;
+-   resposta incompleta;
+-   indisponibilidade.
+
+------------------------------------------------------------------------
+
+## 4.2 IBAMA --- Autos de Infração
+
+Fonte indicada no briefing:
+
+`https://stibamadadosabertosprd.blob.core.windows.net/dados-abertos/dados/SIFISC/auto_infracao/auto_infracao/auto_infracao_csv.zip`
+
+Objetivo:
+
+-   identificar registros relacionados ao CNPJ;
+-   normalizar o identificador;
+-   registrar status da fonte;
+-   não interpretar falha como ausência de ocorrência.
+
+------------------------------------------------------------------------
+
+## 4.3 IBAMA --- Áreas Embargadas
+
+Fonte indicada no briefing:
+
+`https://servicos.ibama.gov.br/ctf/publico/areasembargadas/arquivos/areas_embargadas.csv`
+
+Objetivo:
+
+-   identificar registros de embargo relacionados ao CNPJ;
+-   utilizar como fonte complementar;
+-   permitir redundância em relação à fonte de Autos de Infração.
+
+------------------------------------------------------------------------
+
+# 5. REGRA FUNDAMENTAL DE DADOS
+
+## SIM
+
+A fonte foi consultada com sucesso e foi encontrada evidência.
+
+## NÃO
+
+A fonte foi consultada com sucesso e não foi encontrada evidência.
+
+## NA
+
+Não foi possível determinar o resultado.
+
+Exemplos:
+
+-   timeout;
+-   HTTP error;
+-   arquivo indisponível;
+-   erro de parsing;
+-   falha de processamento.
+
+### Regra
+
+Nunca transformar:
+
+`ERROR → NÃO`
+
+------------------------------------------------------------------------
+
+# 6. CONSOLIDAÇÃO DO IBAMA
+
+As duas fontes do IBAMA serão tratadas como evidências complementares.
+
+Exemplo:
+
+``` text
+Autos = ERROR
+Embargos = NÃO
+Resultado ambiental = NÃO
+```
+
+desde que a fonte disponível permita concluir a dimensão avaliada.
+
+Outro exemplo:
+
+``` text
+Autos = ERROR
+Embargos = ERROR
+Resultado ambiental = NA
+```
+
+A implementação deve registrar os estados individuais das fontes, mesmo
+quando houver um resultado consolidado.
+
+------------------------------------------------------------------------
+
+# 7. REGRAS DE CLASSIFICAÇÃO
+
+## RECUSAR
+
+Quando:
+
+-   CNPJ inválido;
+-   CNPJ não encontrado na Receita;
+-   situação cadastral INAPTA;
+-   situação cadastral BAIXADA.
+
+## REVISAR
+
+Quando:
+
+-   empresa ATIVA possui embargo;
+-   informação crítica necessária para aprovação não pôde ser
+    confirmada;
+-   existir indicador definido no escopo que exija análise manual.
+
+## APROVAR
+
+Quando:
+
+-   CNPJ válido;
+-   empresa encontrada;
+-   situação ATIVA;
+-   nenhuma evidência de embargo;
+-   fontes críticas consultadas com sucesso;
+-   nenhum bloqueio definido pela regra.
+
+Toda classificação deve possuir:
+
+`motivo_classificacao`
+
+------------------------------------------------------------------------
+
+# 8. ARQUITETURA
+
+Arquitetura simples, sem banco.
+
+``` text
+CNPJs
+  ↓
+Frontend
+  ↓
+Backend/API
+  ↓
+┌───────────────┬─────────────────┬──────────────────┐
+│ BrasilAPI     │ IBAMA Autos     │ IBAMA Embargos   │
+└───────────────┴─────────────────┴──────────────────┘
+  ↓
+Normalização
+  ↓
+Merge por CNPJ
+  ↓
+Risk Engine
+  ↓
+Resultado
+  ├── Tela
+  ├── CSV
+  └── PDF
+```
+
+Stack sugerida:
+
+### Frontend
+
+-   React
+-   TypeScript
+-   Vite
+-   Tailwind CSS
+-   componentes simples
+
+### Backend
+
+-   Node.js
+-   TypeScript
+-   API HTTP simples
+
+------------------------------------------------------------------------
+
+# 9. ETAPAS DO PROJETO
+
+------------------------------------------------------------------------
+
+## ETAPA 0 --- Preparação e baseline
+
+### Objetivo
+
+Preparar repositório e ambiente de desenvolvimento.
+
+### Atividades
+
+-   Criar repositório GitHub.
+-   Criar Codespace ou ambiente equivalente.
+-   Criar projeto.
+-   Criar README.
+-   Registrar stack.
+-   Registrar Master Plan.
+-   Criar primeiro commit.
+
+### Critério de aceite
+
+-   Repositório acessível.
+-   README presente.
+-   Master Plan versionado.
+-   Commit inicial realizado.
+
+### Status
+
+`🟢 CONCLUÍDA`
+
+------------------------------------------------------------------------
+
+# ETAPA 1 --- Estrutura inicial e interface
+
+### Objetivo
+
+Ter a aplicação rodando com a estrutura visual inicial.
+
+### Atividades
+
+-   Criar frontend.
+-   Criar backend.
+-   Criar estrutura de pastas.
+-   Criar tela inicial.
+-   Criar campo para múltiplos CNPJs.
+-   Criar botão de consulta.
+-   Criar área de resultados vazia/mockada apenas para validar layout.
+
+### Critério de aceite
+
+-   Projeto abre no navegador.
+-   Interface está utilizável.
+-   CNPJs podem ser inseridos.
+-   Nenhuma integração externa é necessária ainda.
+
+### Status
+
+`⬜ PENDENTE`
+
+------------------------------------------------------------------------
+
+# ETAPA 2 --- Entrada e validação de CNPJ
+
+### Objetivo
+
+Garantir que os CNPJs recebidos estejam normalizados e validados.
+
+### Atividades
+
+-   Aceitar CNPJ com máscara.
+-   Aceitar CNPJ sem máscara.
+-   Remover caracteres não numéricos.
+-   Separar linhas.
+-   Remover duplicados.
+-   Validar quantidade de dígitos.
+-   Validar dígito verificador.
+-   Marcar CNPJ inválido.
+-   Não consultar fontes externas para CNPJ obviamente inválido.
+
+### Critério de aceite
+
+Testar:
+
+-   CNPJ válido com máscara.
+-   CNPJ válido sem máscara.
+-   CNPJ inválido.
+-   Duplicado.
+-   Linha vazia.
+
+### Status
+
+`⬜ PENDENTE`
+
+------------------------------------------------------------------------
+
+# ETAPA 3 --- Integração Receita / BrasilAPI
+
+### Objetivo
+
+Consultar e normalizar os dados cadastrais.
+
+### Atividades
+
+-   Implementar chamada.
+-   Timeout.
+-   Retry limitado.
+-   Tratamento HTTP.
+-   Tratamento de resposta inválida.
+-   Normalização dos campos.
+-   Status da consulta.
+-   Tratamento de CNPJ não encontrado.
+
+### Critério de aceite
+
+Demonstrar:
+
+-   empresa encontrada;
+-   situação cadastral;
+-   dados básicos;
+-   erro tratado;
+-   CNPJ inválido sem chamada desnecessária.
+
+### Status
+
+`⬜ PENDENTE`
+
+------------------------------------------------------------------------
+
+# ETAPA 4 --- Integração IBAMA
+
+### Objetivo
+
+Consultar e consolidar as duas fontes ambientais.
+
+### Atividades
+
+-   Baixar/consultar dataset de Autos.
+-   Inspecionar estrutura real.
+-   Identificar coluna de CNPJ.
+-   Identificar encoding/separador/formato.
+-   Normalizar CNPJ.
+-   Fazer matching.
+-   Implementar fonte de Embargos.
+-   Fazer matching.
+-   Registrar status individual das fontes.
+-   Consolidar SIM/NÃO/NA.
+
+### Critério de aceite
+
+Demonstrar:
+
+-   fornecedor sem registro;
+-   fornecedor com registro;
+-   erro de fonte;
+-   redundância;
+-   resultado SIM/NÃO/NA.
+
+### Status
+
+`⬜ PENDENTE`
+
+------------------------------------------------------------------------
+
+# ETAPA 5 --- Merge e Risk Engine
+
+### Objetivo
+
+Transformar dados de várias fontes em um resultado único por fornecedor.
+
+### Atividades
+
+-   Criar modelo consolidado.
+-   Fazer merge por CNPJ.
+-   Aplicar regras de classificação.
+-   Gerar motivo.
+-   Preservar evidências/status das fontes.
+
+### Critério de aceite
+
+Testar pelo menos:
+
+-   ATIVA + sem embargo → APROVAR;
+-   ATIVA + embargo → REVISAR;
+-   INAPTA → RECUSAR;
+-   BAIXADA → RECUSAR;
+-   CNPJ inválido → RECUSAR;
+-   fonte crítica indisponível → tratamento documentado.
+
+### Status
+
+`⬜ PENDENTE`
+
+------------------------------------------------------------------------
+
+# ETAPA 6 --- Interface de resultados
+
+### Objetivo
+
+Apresentar o resultado de forma clara para o usuário.
+
+### Atividades
+
+-   Cards de resumo.
+-   Total analisado.
+-   Aprovar.
+-   Revisar.
+-   Recusar.
+-   Tabela.
+-   Filtros.
+-   Badges.
+-   Motivo.
+-   Evidências/status das fontes.
+-   Progresso durante consulta.
+-   Mensagens de erro.
+
+### Critério de aceite
+
+Usuário consegue:
+
+1.  inserir CNPJs;
+2.  iniciar análise;
+3.  acompanhar processamento;
+4.  visualizar resultado;
+5.  entender por que cada fornecedor recebeu sua classificação.
+
+### Status
+
+`⬜ PENDENTE`
+
+------------------------------------------------------------------------
+
+# ETAPA 7 --- CSV
+
+### Objetivo
+
+Entregar o arquivo operacional completo.
+
+### Campos mínimos
+
+-   cnpj
+-   razao_social
+-   situacao_cadastral
+-   data_abertura
+-   cnae
+-   telefone
+-   ibama_auto_infracao
+-   ibama_embargo
+-   tem_embargo_ibama
+-   status_receita
+-   status_ibama_auto
+-   status_ibama_embargo
+-   classificacao_risco
+-   motivo_classificacao
+-   data_consulta
+
+### Critério de aceite
+
+-   uma linha por CNPJ;
+-   encoding correto;
+-   dados completos;
+-   download funcionando;
+-   CNPJ inválido também representado com seu status.
+
+### Status
+
+`⬜ PENDENTE`
+
+------------------------------------------------------------------------
+
+# ETAPA 8 --- PDF
+
+### Objetivo
+
+Produzir versão curada para leitura humana.
+
+### Estrutura
+
+1.  Cabeçalho.
+2.  Título.
+3.  Data.
+4.  Resumo.
+5.  Indicadores.
+6.  Tabela consolidada.
+7.  Metodologia.
+8.  Fontes.
+9.  Observação sobre NA.
+
+### Critério de aceite
+
+-   PDF abre corretamente.
+-   PDF é legível.
+-   Tabela não fica cortada.
+-   Paginação funciona.
+-   Resumo bate com o CSV.
+-   Classificações batem com a tela.
+
+### Status
+
+`⬜ PENDENTE`
+
+------------------------------------------------------------------------
+
+# ETAPA 9 --- Testes e estabilidade
+
+### Objetivo
+
+Garantir que o case possa ser demonstrado sem surpresas.
+
+### Cenários obrigatórios
+
+1.  Empresa ATIVA sem embargo.
+2.  Empresa ATIVA com embargo.
+3.  Empresa INAPTA.
+4.  Empresa BAIXADA, se disponível no conjunto.
+5.  CNPJ inválido.
+6.  CNPJ não encontrado.
+7.  Timeout.
+8.  Erro HTTP.
+9.  Dataset IBAMA indisponível.
+10. Uma fonte IBAMA falha e outra funciona.
+11. Ambas as fontes ambientais falham.
+12. Múltiplos CNPJs.
+13. CNPJ duplicado.
+14. CNPJ com máscara.
+15. Exportação CSV.
+16. Geração PDF.
+
+### Critério de aceite
+
+Nenhum cenário crítico pode causar:
+
+-   tela quebrada;
+-   classificação silenciosamente incorreta;
+-   erro escondido;
+-   `ERROR` transformado em `NÃO`.
+
+### Status
+
+`⬜ PENDENTE`
+
+------------------------------------------------------------------------
+
+# ETAPA 10 --- Acabamento e entrega
+
+### Objetivo
+
+Preparar a apresentação e os arquivos finais.
+
+### Atividades
+
+-   Revisar UI.
+-   Revisar mensagens.
+-   Revisar PDF.
+-   Revisar CSV.
+-   Revisar README.
+-   Remover código/testes temporários desnecessários.
+-   Garantir build.
+-   Garantir execução limpa.
+-   Criar commit final.
+-   Conferir repositório.
+-   Conferir arquivos entregáveis.
+
+### Entregáveis
+
+-   URL do GitHub.
+-   CSV consolidado.
+-   PDF consolidado.
+-   Código-fonte.
+
+### Status
+
+`⬜ PENDENTE`
+
+------------------------------------------------------------------------
+
+# 10. CONJUNTO DE TESTE
+
+Usar inicialmente os mesmos CNPJs presentes no PDF de referência
+fornecido pela Tarken.
+
+O arquivo de referência contém exemplos de empresas ativas, empresas com
+embargo, empresa inapta e CNPJ inválido.
+
+Exemplos:
+
+-   BUNGE ALIMENTOS S/A
+-   CARGILL AGRICOLA S A
+-   ADM DO BRASIL LTDA
+-   AMAGGI EXPORTACAO E IMPORTACAO LTDA
+-   BRF S.A.
+-   JBS S/A
+-   SLC AGRICOLA S.A.
+-   ALCOPAN ALCOOL DO PANTANAL LTDA
+-   MASTER AGROPECUARIA LTDA
+-   CNPJ inválido `84046101000192`
+
+A lista pode ser complementada para garantir cobertura dos cenários.
+
+------------------------------------------------------------------------
+
+# 11. ESTRUTURA DE DADOS CONSOLIDADA
+
+Modelo conceitual:
+
+``` json
+{
+  "cnpj": "",
+  "razao_social": "",
+  "situacao_cadastral": "",
+  "data_abertura": "",
+  "cnae": "",
+  "telefone": "",
+  "ibama_auto_infracao": "SIM|NAO|NA",
+  "ibama_embargo": "SIM|NAO|NA",
+  "tem_embargo_ibama": "SIM|NAO|NA",
+  "status_receita": "SUCCESS|ERROR|NOT_FOUND",
+  "status_ibama_auto": "SUCCESS|ERROR",
+  "status_ibama_embargo": "SUCCESS|ERROR",
+  "classificacao_risco": "APROVAR|REVISAR|RECUSAR",
+  "motivo_classificacao": "",
+  "data_consulta": ""
+}
+```
+
+A implementação pode ajustar nomes, desde que mantenha o significado.
+
+------------------------------------------------------------------------
+
+# 12. PRINCÍPIOS TÉCNICOS
+
+1.  Simplicidade acima de complexidade.
+2.  Fonte pública deve ser tratada como potencialmente indisponível.
+3.  Erro não é ausência de ocorrência.
+4.  Não esconder falha de consulta.
+5.  Normalizar CNPJ antes de comparar.
+6.  Não enviar datasets grandes ao browser.
+7.  Não persistir dados sem necessidade.
+8.  Manter rastreabilidade da origem.
+9.  Regras de risco devem ser explícitas.
+10. PDF e CSV devem representar o mesmo resultado consolidado.
+
+------------------------------------------------------------------------
+
+# 13. PRINCÍPIOS DE PRODUTO
+
+1.  O usuário deve entender o resultado rapidamente.
+2.  A classificação precisa ter explicação.
+3.  Dados desconhecidos devem ser identificados.
+4.  O relatório deve ser útil para uma pessoa de Compras.
+5.  O PDF deve priorizar leitura humana.
+6.  O CSV deve priorizar completude.
+7.  A interface não deve esconder problemas das fontes.
+
+------------------------------------------------------------------------
+
+# 14. PERFUMARIA PERMITIDA
+
+Somente depois do MVP estar funcionando.
+
+Permitido:
+
+-   cards de resumo;
+-   badges;
+-   ícones;
+-   progresso;
+-   seção de evidências;
+-   pequena indicação de status das fontes;
+-   visual profissional do PDF;
+-   botão de nova análise.
+
+Não permitido sem alteração formal do plano:
+
+-   nova fonte;
+-   banco;
+-   login;
+-   histórico;
+-   autenticação;
+-   novas regras de negócio significativas;
+-   funcionalidades de produto não relacionadas ao case.
+
+------------------------------------------------------------------------
+
+# 15. CONTROLE DE ETAPAS
+
+  Etapa               Status   Data conclusão   Evidência   Observação
+  ------------------- -------- ---------------- ----------- ------------
+  0 --- Preparação    🟢                                    
+  1 --- Estrutura     ⬜                                    
+  2 --- CNPJ          ⬜                                    
+  3 --- Receita       ⬜                                    
+  4 --- IBAMA         ⬜                                    
+  5 --- Merge/Risco   ⬜                                    
+  6 --- Interface     ⬜                                    
+  7 --- CSV           ⬜                                    
+  8 --- PDF           ⬜                                    
+  9 --- Testes        ⬜                                    
+  10 --- Entrega      ⬜                                    
+
+Status permitidos:
+
+-   `⬜ PENDENTE`
+-   `🟡 EM ANDAMENTO`
+-   `🟢 CONCLUÍDA`
+-   `🔴 BLOQUEADA`
+
+------------------------------------------------------------------------
+
+# 16. HISTÓRICO DE VERSÕES
+
+## v0.2 --- 28/09/2026
+
+### Correção de consistência da Etapa 0
+
+-   **Versão anterior:** v0.1
+-   **Nova versão:** v0.2
+-   **Data:** 28/09/2026
+-   **Motivo:** alinhar o critério de aceite da Etapa 0 à sequência de
+  implementação, pois ainda não existe aplicação nesta fase.
+-   **Alteração:** removido o critério "Projeto abre no navegador" da Etapa 0;
+  a abertura da aplicação permanece como critério da Etapa 1.
+-   **Impacto:** baixo; correção de consistência, sem alteração de escopo.
+-   **Decisão:** aprovada.
+
+## v0.1 --- 28/09/2026
+
+### Criação do Master Plan
+
+Conteúdo inicial:
+
+-   objetivo;
+-   escopo;
+-   fontes;
+-   regras;
+-   arquitetura;
+-   etapas;
+-   critérios de aceite;
+-   controle de mudanças.
+
+### Justificativa
+
+Criar uma fonte de verdade para o desenvolvimento do case e impedir
+expansão não controlada do escopo.
+
+### Status
+
+`APROVADA`
+
+------------------------------------------------------------------------
+
+# 17. REGISTRO DE DECISÕES
+
+  ---------------------------------------------------------------------------
+  ID             Data           Decisão        Justificativa   Impacto
+  -------------- -------------- -------------- --------------- --------------
+  DEC-001        28/09/2026     Não utilizar   O case não      Baixo
+                                banco de dados exige           
+                                no MVP         persistência;   
+                                               reduz           
+                                               complexidade    
+
+  DEC-002        28/09/2026     Não adicionar  O briefing      Baixo
+                                quarta fonte   exige três      
+                                inicialmente   fontes; fonte   
+                                               adicional será  
+                                               apenas possível 
+                                               melhoria futura 
+
+  DEC-003        28/09/2026     Usar duas      O próprio       Médio
+                                fontes do      briefing        
+                                IBAMA como     recomenda       
+                                redundância    redundância     
+
+  DEC-004        28/09/2026     Separar NÃO de É um requisito  Alto
+                                NA             explícito do    
+                                               case            
+
+  DEC-005        28/09/2026     Processar      Evita           Médio
+                                datasets do    transferir      
+                                IBAMA no       datasets        
+                                backend        grandes para o  
+                                               navegador       
+  ---------------------------------------------------------------------------
+
+------------------------------------------------------------------------
+
+# 18. REGISTRO DE MUDANÇAS FUTURAS
+
+Nenhuma mudança deve ser incorporada diretamente ao Master Plan.
+
+Use este formato:
+
+``` text
+CHANGE REQUEST
+
+ID:
+Data:
+Solicitante:
+Versão atual:
+Alteração proposta:
+Motivo:
+Benefício:
+Impacto:
+Risco:
+Decisão:
+Nova versão:
+```
+
+------------------------------------------------------------------------
+
+# 19. CHECKPOINTS
+
+Ao terminar cada etapa:
+
+1.  Executar testes.
+2.  Confirmar critério de aceite.
+3.  Registrar status.
+4.  Registrar data.
+5.  Registrar evidência.
+6.  Fazer commit Git.
+7.  Não iniciar a próxima etapa sem confirmar a anterior.
+
+Formato:
+
+``` text
+CHECKPOINT — ETAPA X
+
+Status: CONCLUÍDA
+Data:
+Commit:
+Testes realizados:
+Resultado:
+Pendências:
+Decisões:
+```
+
+------------------------------------------------------------------------
+
+# 20. REGRA FINAL
+
+O projeto deve continuar simples.
+
+A pergunta que deve ser feita antes de adicionar qualquer coisa é:
+
+> "Isso melhora diretamente a demonstração do case da Tarken?"
+
+Se a resposta for não, não adicionar.
+
+O objetivo final é uma solução pequena, funcional, explicável e bem
+apresentada --- não uma aplicação de produção.
