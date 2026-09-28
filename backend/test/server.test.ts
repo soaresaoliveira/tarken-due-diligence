@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createApiServer, type ReceitaLookup } from '../src/server.ts'
+import { createApiServer, type IbamaLookup, type ReceitaLookup } from '../src/server.ts'
+import type { IbamaResult } from '../src/ibama.ts'
 import type { ReceitaResult, ReceitaStatus } from '../src/brasilapi.ts'
 
 function result(cnpj: string, status: ReceitaStatus): ReceitaResult {
@@ -16,8 +17,12 @@ function result(cnpj: string, status: ReceitaStatus): ReceitaResult {
   }
 }
 
-async function withServer<T>(lookup: ReceitaLookup, run: (url: string) => Promise<T>) {
-  const server = createApiServer(lookup)
+async function withServer<T>(
+  lookup: ReceitaLookup,
+  run: (url: string) => Promise<T>,
+  ibamaLookup?: IbamaLookup,
+) {
+  const server = createApiServer(lookup, ibamaLookup)
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject)
     server.listen(0, '127.0.0.1', resolve)
@@ -103,4 +108,69 @@ test('rota responde 400 para JSON inválido', async () => {
 
     assert.equal(response.status, 400)
   })
+})
+
+test('rota IBAMA envia somente válidos únicos e preserva status por fonte', async () => {
+  const received: string[][] = []
+  await withServer(
+    async (cnpj) => result(cnpj, 'SUCCESS'),
+    async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/ibama/cnpjs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cnpjs: ['11.222.333/0001-81', '11222333000181', '123'] }),
+      })
+      const payload = await response.json() as {
+        results: IbamaResult[]
+        invalid: unknown[]
+        duplicates: unknown[]
+      }
+
+      assert.equal(response.status, 200)
+      assert.deepEqual(received, [['11222333000181']])
+      assert.equal(payload.results[0]?.status_ibama_auto, 'SUCCESS')
+      assert.equal(payload.results[0]?.ibama_auto_infracao, 'NÃO')
+      assert.equal(payload.results[0]?.status_ibama_embargo, 'ERROR')
+      assert.equal(payload.results[0]?.ibama_embargo, 'NA')
+      assert.equal(payload.results[0]?.resultado_ambiental, 'NÃO')
+      assert.equal(payload.invalid.length, 1)
+      assert.equal(payload.duplicates.length, 1)
+    },
+    async (cnpjs) => {
+      received.push(cnpjs)
+      return cnpjs.map((cnpj) => ({
+        cnpj,
+        ibama_auto_infracao: 'NÃO',
+        status_ibama_auto: 'SUCCESS',
+        ibama_embargo: 'NA',
+        status_ibama_embargo: 'ERROR',
+        error_ibama_embargo: 'Fonte indisponível.',
+        resultado_ambiental: 'NÃO',
+      }))
+    },
+  )
+})
+
+test('rota IBAMA não carrega fontes se todas as entradas forem inválidas', async () => {
+  let calls = 0
+  await withServer(
+    async (cnpj) => result(cnpj, 'SUCCESS'),
+    async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/ibama/cnpjs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cnpjs: ['123', 'sem dígitos'] }),
+      })
+      const payload = await response.json() as { results: IbamaResult[]; invalid: unknown[] }
+
+      assert.equal(response.status, 200)
+      assert.equal(payload.results.length, 0)
+      assert.equal(payload.invalid.length, 2)
+      assert.equal(calls, 0)
+    },
+    async () => {
+      calls += 1
+      return []
+    },
+  )
 })

@@ -10,7 +10,12 @@
   },
   "devDependencies": {
     "@types/node": "^26.6.3",
+    "@types/unzipper": "^0.10.11",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "csv-parse": "^7.0.3",
+    "unzipper": "^0.12.5"
   }
 }

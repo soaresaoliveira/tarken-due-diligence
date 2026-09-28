@@ -11,37 +11,24 @@ import {
 } from 'lucide-react'
 import { parseCnpjLines, type CnpjBatch } from './utils/cnpj.ts'
 
-type ReceitaStatus = 'SUCCESS' | 'ERROR' | 'NOT_FOUND'
+type IbamaStatus = 'SUCCESS' | 'ERROR'
+type IbamaEvidence = 'SIM' | 'NÃO' | 'NA'
+type SourceStatus = IbamaStatus | 'NOT_SENT' | 'PENDING'
 
-type ReceitaResult = {
+type IbamaResult = {
   cnpj: string
-  razao_social: string | null
-  situacao_cadastral: string | null
-  data_abertura: string | null
-  cnae: { codigo: string | null; descricao: string | null } | null
-  endereco: {
-    cep: string | null
-    logradouro: string | null
-    numero: string | null
-    complemento: string | null
-    bairro: string | null
-    municipio: string | null
-    uf: string | null
-  } | null
-  telefone: string | null
-  status: ReceitaStatus
-  error?: string
+  ibama_auto_infracao: IbamaEvidence
+  status_ibama_auto: IbamaStatus
+  error_ibama_auto?: string
+  ibama_embargo: IbamaEvidence
+  status_ibama_embargo: IbamaStatus
+  error_ibama_embargo?: string
+  resultado_ambiental: IbamaEvidence
 }
 
-function formatAddress(address: ReceitaResult['endereco']) {
-  if (!address) return '—'
-  return Object.values(address).filter(Boolean).join(', ') || '—'
-}
-
-const sourceStatusLabels: Record<ReceitaStatus | 'NOT_SENT' | 'PENDING', string> = {
+const sourceStatusLabels: Record<SourceStatus, string> = {
   SUCCESS: 'SUCCESS',
   ERROR: 'ERROR',
-  NOT_FOUND: 'NOT_FOUND',
   NOT_SENT: 'NÃO ENVIADO',
   PENDING: 'AGUARDANDO',
 }
@@ -57,44 +44,44 @@ const starterInput = [
 function App() {
   const [input, setInput] = useState(starterInput)
   const [batch, setBatch] = useState<CnpjBatch | null>(null)
-  const [receitaResults, setReceitaResults] = useState<ReceitaResult[]>([])
+  const [ibamaResults, setIbamaResults] = useState<IbamaResult[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [requestError, setRequestError] = useState('')
 
   const inputCount = input.split(/\r?\n/).filter((line) => line.trim()).length
-  const receitaByCnpj = new Map(receitaResults.map((result) => [result.cnpj, result]))
+  const ibamaByCnpj = new Map(ibamaResults.map((result) => [result.cnpj, result]))
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const parsed = parseCnpjLines(input)
     setBatch(parsed)
-    setReceitaResults([])
+    setIbamaResults([])
     setRequestError('')
 
     if (parsed.valid.length === 0) return
 
     setIsLoading(true)
     try {
-      const response = await fetch('/api/receita/cnpjs', {
+      const response = await fetch('/api/ibama/cnpjs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cnpjs: parsed.valid.map((entry) => entry.cnpj) }),
       })
       const payload = (await response.json()) as {
-        results?: ReceitaResult[]
+        results?: IbamaResult[]
         error?: string
       }
 
       if (!response.ok || !Array.isArray(payload.results)) {
-        throw new Error(payload.error ?? 'O backend retornou uma resposta inesperada.')
+        throw new Error(payload.error ?? 'O backend IBAMA retornou uma resposta inesperada.')
       }
 
-      setReceitaResults(payload.results)
+      setIbamaResults(payload.results)
     } catch (error) {
       setRequestError(
         error instanceof Error
           ? error.message
-          : 'Não foi possível consultar o backend. Status da fonte: ERROR.',
+          : 'Não foi possível consultar o backend IBAMA.',
       )
     } finally {
       setIsLoading(false)
@@ -104,7 +91,7 @@ function App() {
   function clearInput() {
     setInput('')
     setBatch(null)
-    setReceitaResults([])
+    setIbamaResults([])
     setRequestError('')
   }
 
@@ -120,7 +107,7 @@ function App() {
           </a>
           <div className="environment-tag">
             <span className="environment-tag__dot" />
-            <span>Etapa 3 · Receita</span>
+            <span>Etapa 4 · IBAMA</span>
           </div>
         </div>
       </header>
@@ -128,23 +115,23 @@ function App() {
       <main className="main-content" id="inicio">
         <section className="page-heading" aria-labelledby="page-title">
           <div>
-            <p className="eyebrow"><span>03</span> / RECEITA FEDERAL</p>
-            <h1 id="page-title">Consulta cadastral</h1>
+            <p className="eyebrow"><span>04</span> / CONSULTA AMBIENTAL</p>
+            <h1 id="page-title">Evidências do IBAMA</h1>
             <p className="page-heading__description">
-              Valide localmente e consulte os dados cadastrais da empresa.
+              Consulte Autos de Infração e Áreas Embargadas por CNPJ.
             </p>
           </div>
           <div className="heading-stamp" aria-label="Protótipo visual">
             <span className="heading-stamp__icon"><BadgeCheck size={16} /></span>
-            <span>Integração BrasilAPI</span>
+            <span>Fontes independentes</span>
           </div>
         </section>
 
         <aside className="demo-banner" aria-label="Aviso sobre dados demonstrativos">
           <span className="demo-banner__icon"><Sparkles size={17} /></span>
           <p>
-            <strong>Consulta via backend.</strong> CNPJs são validados localmente;
-            somente os válidos e únicos seguem para a BrasilAPI. IBAMA não é consultado.
+            <strong>Processamento no backend.</strong> Os datasets não são enviados ao
+            navegador; somente evidências e status por CNPJ são retornados.
           </p>
           <span className="demo-banner__tag">API</span>
         </aside>
@@ -154,7 +141,7 @@ function App() {
             <div className="panel-kicker"><span>01</span><span>ENTRADA</span></div>
             <div className="input-panel__heading">
               <h2 id="input-title">Lista de CNPJs</h2>
-              <p>Insira um CNPJ por linha; a consulta cadastral usa o backend.</p>
+              <p>Insira um CNPJ por linha; a validação local filtra a consulta.</p>
             </div>
 
             <form onSubmit={handleSubmit}>
@@ -169,7 +156,7 @@ function App() {
                 onChange={(event) => {
                   setInput(event.target.value)
                   setBatch(null)
-                  setReceitaResults([])
+                  setIbamaResults([])
                   setRequestError('')
                 }}
                 rows={7}
@@ -197,12 +184,12 @@ function App() {
                 ) : (
                   <ArrowRight size={17} aria-hidden="true" />
                 )}
-                <span>{isLoading ? 'Consultando BrasilAPI' : 'Consultar fornecedores'}</span>
+                <span>{isLoading ? 'Consultando IBAMA' : 'Consultar fontes IBAMA'}</span>
               </button>
             </form>
             <p className="input-panel__footnote">
               <CircleAlert size={14} />
-              Apenas CNPJs válidos são enviados pelo backend à BrasilAPI.
+              Apenas CNPJs válidos e únicos são enviados pelo backend às duas fontes.
             </p>
           </section>
 
@@ -210,7 +197,7 @@ function App() {
             <div className="results-heading">
               <div>
                 <div className="panel-kicker"><span>02</span><span>RESULTADOS</span></div>
-                <h2 id="results-title">Resultado cadastral</h2>
+                <h2 id="results-title">Resultado das fontes</h2>
               </div>
               {batch && (
                 <div className="result-count">{batch.informedCount} {batch.informedCount === 1 ? 'entrada avaliada' : 'entradas avaliadas'}</div>
@@ -219,7 +206,7 @@ function App() {
 
             {requestError && (
               <div className="error-message" role="alert">
-                <strong>Status da fonte: ERROR.</strong> {requestError}. Nenhuma ausência de cadastro foi presumida.
+                <strong>Status das fontes: ERROR.</strong> {requestError}. Nenhuma ausência de evidência foi presumida.
               </div>
             )}
 
@@ -246,29 +233,37 @@ function App() {
 
                 <div className="table-frame">
                   <table>
-                    <caption className="visually-hidden">Validação local e dados cadastrais retornados pela BrasilAPI</caption>
+                    <caption className="visually-hidden">Resultados e status independentes das duas fontes IBAMA</caption>
                     <thead>
                       <tr>
                         <th scope="col">CNPJ / entrada</th>
-                        <th scope="col">Status</th>
-                        <th scope="col">Razão social</th>
-                        <th scope="col">Situação</th>
-                        <th scope="col">Abertura</th>
-                        <th scope="col">CNAE</th>
-                        <th scope="col">Endereço</th>
-                        <th scope="col">Telefone</th>
-                        <th scope="col">BrasilAPI</th>
+                        <th scope="col">Validação</th>
+                        <th scope="col">Autos</th>
+                        <th scope="col">Status Autos</th>
+                        <th scope="col">Embargos</th>
+                        <th scope="col">Status Embargos</th>
+                        <th scope="col">Ambiental</th>
                       </tr>
                     </thead>
                     <tbody>
                       {batch.entries.map((entry, index) => {
-                        const receita = entry.status === 'valid'
-                          ? receitaByCnpj.get(entry.cnpj)
+                        const result = entry.status === 'valid'
+                          ? ibamaByCnpj.get(entry.cnpj)
                           : undefined
-                        const sourceStatus: ReceitaStatus | 'NOT_SENT' | 'PENDING' =
+                        const autoStatus: SourceStatus =
                           entry.status !== 'valid'
                             ? 'NOT_SENT'
-                            : receita?.status ?? (requestError ? 'ERROR' : 'PENDING')
+                            : result?.status_ibama_auto ?? (requestError ? 'ERROR' : 'PENDING')
+                        const embargoStatus: SourceStatus =
+                          entry.status !== 'valid'
+                            ? 'NOT_SENT'
+                            : result?.status_ibama_embargo ?? (requestError ? 'ERROR' : 'PENDING')
+                        const autoResult = result?.ibama_auto_infracao ??
+                          (requestError && entry.status === 'valid' ? 'NA' : '—')
+                        const embargoResult = result?.ibama_embargo ??
+                          (requestError && entry.status === 'valid' ? 'NA' : '—')
+                        const environmentalResult = result?.resultado_ambiental ??
+                          (requestError && entry.status === 'valid' ? 'NA' : '—')
 
                         return (
                           <tr className="result-row" key={`${entry.cnpj}-${index}`}>
@@ -285,22 +280,23 @@ function App() {
                               </span>
                               {entry.reason && <small className="entry-reason">{entry.reason}</small>}
                             </td>
-                            <td>{receita?.razao_social ?? '—'}</td>
-                            <td>{receita?.situacao_cadastral ?? '—'}</td>
-                            <td>{receita?.data_abertura ?? '—'}</td>
-                            <td className="reason-cell">
-                              {receita?.cnae
-                                ? [receita.cnae.codigo, receita.cnae.descricao].filter(Boolean).join(' · ')
-                                : '—'}
-                            </td>
-                            <td className="reason-cell">{formatAddress(receita?.endereco ?? null)}</td>
-                            <td>{receita?.telefone ?? '—'}</td>
+                            <td><span className={`evidence-badge evidence-badge--${autoResult === '—' ? 'empty' : autoResult === 'NÃO' ? 'nao' : autoResult.toLowerCase()}`}>{autoResult}</span></td>
                             <td>
-                              <span className={`source-badge source-badge--${sourceStatus.toLowerCase()}`}>
-                                {sourceStatusLabels[sourceStatus]}
+                              <span className={`source-badge source-badge--${autoStatus.toLowerCase()}`}>
+                                {sourceStatusLabels[autoStatus]}
                               </span>
-                              {receita?.error && <small className="source-error">{receita.error}</small>}
+                              {result?.error_ibama_auto && <small className="source-error">{result.error_ibama_auto}</small>}
+                              {requestError && entry.status === 'valid' && <small className="source-error">{requestError}</small>}
                             </td>
+                            <td><span className={`evidence-badge evidence-badge--${embargoResult === '—' ? 'empty' : embargoResult === 'NÃO' ? 'nao' : embargoResult.toLowerCase()}`}>{embargoResult}</span></td>
+                            <td>
+                              <span className={`source-badge source-badge--${embargoStatus.toLowerCase()}`}>
+                                {sourceStatusLabels[embargoStatus]}
+                              </span>
+                              {result?.error_ibama_embargo && <small className="source-error">{result.error_ibama_embargo}</small>}
+                              {requestError && entry.status === 'valid' && <small className="source-error">{requestError}</small>}
+                            </td>
+                            <td><span className={`evidence-badge evidence-badge--${environmentalResult === '—' ? 'empty' : environmentalResult === 'NÃO' ? 'nao' : environmentalResult.toLowerCase()}`}>{environmentalResult}</span></td>
                           </tr>
                         )
                       })}
@@ -309,14 +305,14 @@ function App() {
                 </div>
                 <p className="results-footnote">
                   <ShieldCheck size={14} />
-                  Inválidos e duplicados não são consultados. ERROR permanece distinto de NOT_FOUND.
+                  Status técnicos permanecem separados de SIM, NÃO e NA; não há classificação de risco nesta etapa.
                 </p>
               </>
             ) : (
               <div className="empty-state">
                 <div className="empty-state__icon"><ClipboardList size={22} /></div>
-                <h3>Os dados cadastrais aparecerão aqui</h3>
-                <p>Valide a lista para consultar os CNPJs válidos pela BrasilAPI, através do backend.</p>
+                <h3>As evidências aparecerão aqui</h3>
+                <p>Valide a lista para consultar as duas fontes ambientais pelo backend.</p>
               </div>
             )}
           </section>
@@ -324,7 +320,7 @@ function App() {
 
         <footer className="page-footer">
           <span>TARKEN <span className="footer-dot">·</span> CASE DE DUE DILIGENCE</span>
-          <span>Receita via backend <span className="footer-dot">·</span> IBAMA fora desta etapa</span>
+          <span>Autos + Embargos <span className="footer-dot">·</span> sem Risk Engine</span>
         </footer>
       </main>
     </div>

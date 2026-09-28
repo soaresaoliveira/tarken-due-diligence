@@ -5,8 +5,12 @@ import {
   lookupBrasilApi,
   type ReceitaResult,
 } from './brasilapi.js'
+import { IbamaService, type IbamaResult } from './ibama.js'
 
 export type ReceitaLookup = (cnpj: string) => Promise<ReceitaResult>
+export type IbamaLookup = (cnpjs: string[]) => Promise<IbamaResult[]>
+
+const defaultIbamaService = new IbamaService()
 
 function sendJson(response: ServerResponse, status: number, body: unknown) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
@@ -35,7 +39,10 @@ function errorResult(cnpj: string): ReceitaResult {
   }
 }
 
-export function createApiServer(receitaLookup: ReceitaLookup = lookupBrasilApi) {
+export function createApiServer(
+  receitaLookup: ReceitaLookup = lookupBrasilApi,
+  ibamaLookup: IbamaLookup = (cnpjs) => defaultIbamaService.lookup(cnpjs),
+) {
   return createServer(async (request, response) => {
     const path = new URL(request.url ?? '/', 'http://localhost').pathname
 
@@ -80,6 +87,41 @@ export function createApiServer(receitaLookup: ReceitaLookup = lookupBrasilApi) 
         invalid: batch.invalid,
         duplicates: batch.duplicates,
       })
+      return
+    }
+
+    if (request.method === 'POST' && path === '/api/ibama/cnpjs') {
+      let body: unknown
+      try {
+        body = await readJson(request)
+      } catch {
+        sendJson(response, 400, { error: 'O corpo da solicitação precisa ser JSON válido.' })
+        return
+      }
+
+      const cnpjs =
+        typeof body === 'object' && body !== null && 'cnpjs' in body
+          ? (body as { cnpjs: unknown }).cnpjs
+          : null
+
+      if (!Array.isArray(cnpjs) || !cnpjs.every((cnpj) => typeof cnpj === 'string')) {
+        sendJson(response, 400, { error: 'Envie uma lista de CNPJs em formato texto.' })
+        return
+      }
+
+      const batch = parseCnpjLines(cnpjs.join('\n'))
+      try {
+        const results = batch.valid.length > 0
+          ? await ibamaLookup(batch.valid.map((entry) => entry.cnpj))
+          : []
+        sendJson(response, 200, {
+          results,
+          invalid: batch.invalid,
+          duplicates: batch.duplicates,
+        })
+      } catch {
+        sendJson(response, 500, { error: 'Falha ao processar as fontes IBAMA.' })
+      }
       return
     }
 

@@ -16,6 +16,10 @@ export type CnpjBatch = {
 const FIRST_DIGIT_WEIGHTS = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
 const SECOND_DIGIT_WEIGHTS = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
 
+export function normalizeCnpj(value: string) {
+  return value.replace(/\D/g, '')
+}
+
 function calculateDigit(base: string, weights: number[]) {
   const sum = weights.reduce(
     (total, weight, index) => total + Number(base[index]) * weight,
@@ -59,7 +63,7 @@ export function parseCnpjLines(input: string): CnpjBatch {
     if (!original) continue
 
     informedCount += 1
-    const cnpj = original.replace(/\D/g, '')
+    const cnpj = normalizeCnpj(original)
 
     if (!cnpj) {
       const entry: CnpjEntry = {

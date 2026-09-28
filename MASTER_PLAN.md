@@ -1,8 +1,8 @@
 # TARKEN --- CASE DE DUE DILIGENCE DE FORNECEDORES
 
-## MASTER PLAN v0.2
+## MASTER PLAN v0.3
 
-**Status:** Baseline inicial\
+**Status:** Em execução\
 **Última atualização:** 28/09/2026\
 **Responsável:** Gabriel\
 **Objetivo:** Construir o case técnico solicitado pela Tarken, com
@@ -508,7 +508,7 @@ Demonstrar:
 
 ### Status
 
-`⬜ PENDENTE`
+`🟢 CONCLUÍDA`
 
 ------------------------------------------------------------------------
 
@@ -839,8 +839,8 @@ Não permitido sem alteração formal do plano:
   1 --- Estrutura     🟢                                    
   2 --- CNPJ          🟢                                    
   3 --- Receita       🟢                                    
-  4 --- IBAMA         ⬜                                    
-  5 --- Merge/Risco   ⬜                                    
+  4 --- IBAMA         🟢
+  5 --- Merge/Risco   ⬜
   6 --- Interface     ⬜                                    
   7 --- CSV           ⬜                                    
   8 --- PDF           ⬜                                    
@@ -857,6 +857,20 @@ Status permitidos:
 ------------------------------------------------------------------------
 
 # 16. HISTÓRICO DE VERSÕES
+
+## v0.3 --- 28/09/2026
+
+### Fechamento formal da Etapa 4
+
+-   **Versão anterior:** v0.2
+-   **Nova versão:** v0.3
+-   **Data:** 28/09/2026
+-   **Motivo:** registrar a conclusão da Etapa 4 após validação técnica e
+  atendimento do critério de aceite.
+-   **Alteração:** atualização do status e registro das evidências da Etapa 4;
+  nenhum escopo ou critério das etapas futuras foi alterado.
+-   **Impacto:** baixo; atualização de andamento sem alteração de escopo.
+-   **Decisão:** aprovada.
 
 ## v0.2 --- 28/09/2026
 
@@ -1030,6 +1044,32 @@ API real inacessível neste ambiente (HTTP 403), sem retry para esse bloqueio.
 Pendências: Etapa 4 não iniciada.
 Decisões: retry único somente para erros transitórios configurados; 403, 404 e 429
 não são repetidos. Nenhuma alteração de escopo; Master Plan permanece v0.2.
+
+CHECKPOINT — ETAPA 4
+
+Status: CONCLUÍDA
+Data: 28/09/2026
+Commit: feat: integrate ibama environmental data
+Critério de aceite: testes automatizados cobrem evidência positiva e ausência
+de registro, falha independente de fonte, redundância e consolidação SIM/NÃO/NA.
+Evidência: consulta real ao endpoint IBAMA retornou HTTP 200; Autos de Infração
+e Áreas Embargadas retornaram SUCCESS + NÃO para o CNPJ válido. O segundo CNPJ
+foi rejeitado por dígito verificador inválido. Ambos os datasets foram carregados
+com sucesso. A resposta repetida, com índices carregados, levou aproximadamente
+7 ms; a primeira chamada excedeu o limite de 30 s do cliente curl, e a duração
+total do primeiro carregamento não foi medida. Smoke test real no Playwright
+com frontend e backend integrados processou 5 linhas: 1 válida, 1 duplicada e
+3 inválidas; console errors=[] e page errors=[].
+Testes realizados: `npm test` (49 testes); `npm run lint --workspace @tarken/web`;
+`npm run build` para frontend e backend; smoke test Playwright com fontes reais.
+Resultado: todos os testes, lint, builds e smoke test passaram. `/api/health`
+retornou HTTP 200 e o POST IBAMA retornou HTTP 200.
+Pendências: Etapa 5 não iniciada.
+Decisões: SUCCESS representa o estado técnico da fonte; SIM/NÃO representam
+evidência positiva/negativa e NA representa resultado indeterminado. O primeiro
+carregamento e indexação são assíncronos e podem aumentar a latência da primeira
+consulta; sua duração não foi medida. Nenhuma alteração de escopo; Etapa 5
+permanece pendente.
 
 ------------------------------------------------------------------------
 

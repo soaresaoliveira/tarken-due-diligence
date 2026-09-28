@@ -13,7 +13,7 @@ em CSV e PDF.
 
 ## Stack planejada
 
-- Frontend: React, TypeScript, Vite e Tailwind CSS.
+- Frontend: React, TypeScript, Vite.
 - Backend: Node.js e TypeScript, com API HTTP simples.
 
 O projeto será desenvolvido por etapas. O [MASTER_PLAN.md](MASTER_PLAN.md) é a
@@ -26,5 +26,6 @@ npm install
 npm run dev
 ```
 
-A aplicação valida CNPJs localmente e consulta a BrasilAPI por meio do backend.
-Nesta etapa, não há consultas ao IBAMA.
+A aplicação valida CNPJs localmente e consulta a BrasilAPI e as duas fontes do
+IBAMA por meio do backend. A Etapa 4 mantém os status técnicos separados dos
+resultados ambientais (`SIM`, `NÃO`, `NA`).
