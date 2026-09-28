@@ -6,6 +6,8 @@ import {
   type ReceitaResult,
 } from './brasilapi.js'
 import { IbamaService, type IbamaResult } from './ibama.js'
+import { mergeResults } from './merge.js'
+import { classifyRisk } from './risk-engine.js'
 
 export type ReceitaLookup = (cnpj: string) => Promise<ReceitaResult>
 export type IbamaLookup = (cnpjs: string[]) => Promise<IbamaResult[]>
@@ -37,6 +39,21 @@ function errorResult(cnpj: string): ReceitaResult {
     status: 'ERROR',
     error: 'Falha inesperada durante a consulta à BrasilAPI.',
   }
+}
+
+async function lookupReceitaResults(cnpjs: string[], receitaLookup: ReceitaLookup) {
+  const results: ReceitaResult[] = []
+
+  // Consultas sequenciais mantêm previsível a carga sobre a API pública.
+  for (const cnpj of cnpjs) {
+    try {
+      results.push(await receitaLookup(cnpj))
+    } catch {
+      results.push(errorResult(cnpj))
+    }
+  }
+
+  return results
 }
 
 export function createApiServer(
@@ -71,16 +88,10 @@ export function createApiServer(
       }
 
       const batch = parseCnpjLines(cnpjs.join('\n'))
-      const results: ReceitaResult[] = []
-
-      // Consultas sequenciais mantêm previsível a carga sobre a API pública.
-      for (const entry of batch.valid) {
-        try {
-          results.push(await receitaLookup(entry.cnpj))
-        } catch {
-          results.push(errorResult(entry.cnpj))
-        }
-      }
+      const results = await lookupReceitaResults(
+        batch.valid.map((entry) => entry.cnpj),
+        receitaLookup,
+      )
 
       sendJson(response, 200, {
         results,
@@ -110,13 +121,22 @@ export function createApiServer(
       }
 
       const batch = parseCnpjLines(cnpjs.join('\n'))
+      const validCnpjs = batch.valid.map((entry) => entry.cnpj)
+      const invalid = batch.invalid.map((entry) => ({
+        ...entry,
+        ...classifyRisk({ cnpj: entry.cnpj }),
+      }))
       try {
-        const results = batch.valid.length > 0
-          ? await ibamaLookup(batch.valid.map((entry) => entry.cnpj))
-          : []
+        const [receitaResults, ibamaResults] = validCnpjs.length > 0
+          ? await Promise.all([
+              lookupReceitaResults(validCnpjs, receitaLookup),
+              ibamaLookup(validCnpjs),
+            ])
+          : [[], []]
+        const results = mergeResults(validCnpjs, receitaResults, ibamaResults)
         sendJson(response, 200, {
           results,
-          invalid: batch.invalid,
+          invalid,
           duplicates: batch.duplicates,
         })
       } catch {

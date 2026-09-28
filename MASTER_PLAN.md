@@ -1,6 +1,6 @@
 # TARKEN --- CASE DE DUE DILIGENCE DE FORNECEDORES
 
-## MASTER PLAN v0.3
+## MASTER PLAN v0.4
 
 **Status:** Em execução\
 **Última atualização:** 28/09/2026\
@@ -539,7 +539,7 @@ Testar pelo menos:
 
 ### Status
 
-`⬜ PENDENTE`
+`🟢 CONCLUÍDA`
 
 ------------------------------------------------------------------------
 
@@ -761,9 +761,9 @@ Modelo conceitual:
   "data_abertura": "",
   "cnae": "",
   "telefone": "",
-  "ibama_auto_infracao": "SIM|NAO|NA",
-  "ibama_embargo": "SIM|NAO|NA",
-  "tem_embargo_ibama": "SIM|NAO|NA",
+  "ibama_auto_infracao": "SIM|NÃO|NA",
+  "ibama_embargo": "SIM|NÃO|NA",
+  "tem_embargo_ibama": "SIM|NÃO|NA",
   "status_receita": "SUCCESS|ERROR|NOT_FOUND",
   "status_ibama_auto": "SUCCESS|ERROR",
   "status_ibama_embargo": "SUCCESS|ERROR",
@@ -840,7 +840,7 @@ Não permitido sem alteração formal do plano:
   2 --- CNPJ          🟢                                    
   3 --- Receita       🟢                                    
   4 --- IBAMA         🟢
-  5 --- Merge/Risco   ⬜
+  5 --- Merge/Risco   🟢
   6 --- Interface     ⬜                                    
   7 --- CSV           ⬜                                    
   8 --- PDF           ⬜                                    
@@ -857,6 +857,21 @@ Status permitidos:
 ------------------------------------------------------------------------
 
 # 16. HISTÓRICO DE VERSÕES
+
+## v0.4 --- 28/09/2026
+
+### Fechamento formal da Etapa 5 e correção do enum de evidência
+
+-   **Versão anterior:** v0.3
+-   **Nova versão:** v0.4
+-   **Data:** 28/09/2026
+-   **Motivo:** registrar a conclusão da Etapa 5 e corrigir a grafia literal
+  `NAO` para `NÃO` no modelo conceitual, conforme a representação canônica.
+-   **Alteração:** status da Etapa 5 atualizado; checkpoint e evidências
+  registrados; enum corrigido. Nenhum escopo futuro foi alterado.
+-   **Impacto:** baixo; fechamento de etapa e correção documental, sem mudança
+  das regras de negócio.
+-   **Decisão:** aprovada.
 
 ## v0.3 --- 28/09/2026
 
@@ -1069,6 +1084,39 @@ Decisões: SUCCESS representa o estado técnico da fonte; SIM/NÃO representam
 evidência positiva/negativa e NA representa resultado indeterminado. O primeiro
 carregamento e indexação são assíncronos e podem aumentar a latência da primeira
 consulta; sua duração não foi medida. Nenhuma alteração de escopo; Etapa 5
+permanece pendente.
+
+CHECKPOINT — ETAPA 5
+
+Status: CONCLUÍDA
+Data: 28/09/2026
+Commit: feat: add merge and risk classification
+Merge: resultados de Receita, Autos e Embargos associados pelo CNPJ; dados e
+status individuais das fontes preservados. `tem_embargo_ibama` representa somente
+o resultado de Embargos. O Risk Engine é separado do merge e aplica prioridade
+RECUSAR → REVISAR → APROVAR.
+Regras: CNPJ inválido, Receita NOT_FOUND, INAPTA e BAIXADA resultam em RECUSAR;
+embargo confirmado ou informação crítica não confirmada resultam em REVISAR;
+APROVAR exige Receita SUCCESS/ATIVA e Embargos SUCCESS/NÃO. Autos não é bloqueio
+isolado para aprovação. ERROR nunca é convertido em NÃO.
+Evidência integrada: frontend HTTP 200; backend ativo e `/api/health` HTTP 200;
+Playwright confirmou 2 resultados válidos únicos, 1 duplicidade normalizada e 1
+CNPJ inválido. A API retornou classificação e motivo ao consumidor; a exibição
+visual desses campos fica para a Etapa 6. Viewport mobile 390x844 sem overflow
+horizontal da página. Console errors=[] e page errors=[].
+Fontes reais: BrasilAPI respondeu HTTP 403 no ambiente de validação; o resultado
+foi preservado como status_receita ERROR e classificado REVISAR, sem ser tratado
+como NOT_FOUND ou NÃO. Autos e Embargos retornaram SUCCESS + NÃO. O CNPJ inválido
+foi recusado com motivo próprio. O HTTP 403 é comportamento observado no
+ambiente de validação, não uma falha de código.
+Testes realizados: 30/30 testes determinísticos de IBAMA, Merge e Risk Engine;
+67/67 testes na suíte completa; lint e builds frontend/backend aprovados;
+contratos das rotas Receita e IBAMA verificados.
+Resultado: testes, lint, builds, diff check e validação integrada aprovados.
+Pendências: Etapa 6 não iniciada.
+Decisões: manter `SUCCESS`/`ERROR` distintos de `SIM`/`NÃO`/`NA`; cenário de
+aprovação e combinação Autos ERROR + Embargos NÃO confirmados pelos testes
+determinísticos quando não produzidos naturalmente pelos dados públicos. Etapa 6
 permanece pendente.
 
 ------------------------------------------------------------------------
