@@ -1,6 +1,6 @@
 # TARKEN --- CASE DE DUE DILIGENCE DE FORNECEDORES
 
-## MASTER PLAN v0.7
+## MASTER PLAN v0.8
 
 **Status:** Em execução\
 **Última atualização:** 28/09/2026\
@@ -676,7 +676,41 @@ Produzir versão curada para leitura humana.
 
 ### Status
 
-`⬜ PENDENTE`
+`🟢 CONCLUÍDA`
+
+### CHECKPOINT — ETAPA 8
+
+Status: CONCLUÍDA
+Data: 28/09/2026
+Commit: não realizado nesta validação.
+Testes realizados: suíte geral 90/90; PDF e CSV 16/16; testes backend
+relevantes 53/53; E2E 7/7 em 13,1 s; lint frontend aprovado; builds frontend e
+backend aprovados; `git diff --check` aprovado.
+Geração: PDFs curto e longo gerados pelos controles de exportação da aplicação.
+O curto tem 3 páginas; o longo tem 45 páginas e foi gerado usando os 48 CNPJs
+iniciais do App. Para evitar consulta em lote às fontes, o cenário de 48 usou
+resposta de API determinística de teste. PDF curto e longo preservados em
+`artifacts/etapa8-visual-review/`. CSV de comparação gerado em
+`artifacts/etapa8-visual-review/etapa8-cenario-48.csv`.
+Consistência: a tela apresentou 48 fornecedores: 16 APROVAR, 16 REVISAR e
+16 RECUSAR; 1 CNPJ inválido e nenhuma duplicidade. O CSV contém 48 registros
+com as mesmas classificações. Com o filtro REVISAR ativo, a tela mostrou 16
+registros; o CSV manteve o conjunto completo. O PDF foi gerado no mesmo estado
+de filtro e recebe o conjunto completo de resultados da análise, não apenas as
+linhas visíveis.
+BrasilAPI: User-Agent `Tarken-Due-Diligence/1.0` configurado; teste específico
+incluído entre os 13/13 testes BrasilAPI aprovados. Uma consulta real pontual
+retornou `SUCCESS`/`ATIVA`; nenhuma consulta em lote foi feita nesta validação.
+Observação do build: frontend aprovado com alerta de chunks acima de 500 kB
+associado aos bundles PDF/fontes; registrado como observação, não como falha.
+Limitação visual: não foi possível realizar validação visual automatizada dos
+PDFs porque não havia renderizador/visualizador PDF disponível no ambiente.
+Nenhuma ferramenta foi instalada. Portanto, legibilidade e ausência de cortes
+não foram visualmente comprovadas. Os PDFs foram preservados para inspeção
+manual posterior.
+Resultado: implementação testada; geração multipágina validada; consistência
+tela/CSV validada. A validação visual permanece limitada pela ausência de
+ferramenta no ambiente e não é declarada como realizada.
 
 ------------------------------------------------------------------------
 
@@ -891,6 +925,24 @@ Status permitidos:
 ------------------------------------------------------------------------
 
 # 16. HISTÓRICO DE VERSÕES
+
+## v0.8 --- 28/09/2026
+
+### Fechamento formal da Etapa 8 com limitação visual registrada
+
+-   **Versão anterior:** v0.7
+-   **Nova versão:** v0.8
+-   **Data:** 28/09/2026
+-   **Motivo:** registrar os testes, a geração multipágina e a consistência
+  da Etapa 8, encerrando formalmente a etapa conforme decisão do projeto.
+-   **Alteração:** Etapa 8 marcada como concluída; checkpoint registra os
+  resultados de testes e builds, PDFs e CSV preservados, cenário de 48 CNPJs,
+  consistência entre tela e CSV, validação pontual da BrasilAPI e alerta de
+  tamanho dos bundles. A ausência de ferramenta de renderização visual e a
+  falta de comprovação visual de legibilidade/cortes foram explicitadas.
+-   **Impacto:** baixo; atualização documental sem alteração de código,
+  arquitetura ou regras de negócio.
+-   **Decisão:** aprovada com a limitação visual registrada.
 
 ## v0.7 --- 28/09/2026
 
