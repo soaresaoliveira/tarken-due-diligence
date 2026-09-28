@@ -502,7 +502,7 @@ textarea:focus {
 
 table {
 	width: 100%;
-	min-width: 720px;
+	min-width: 1120px;
 	border-collapse: collapse;
 	text-align: left;
 }
@@ -593,12 +593,82 @@ tbody tr:last-child td {
 	color: #44564b;
 	font-family: var(--mono);
 	font-size: 10px;
+	white-space: normal;
+}
+
+.original-cell strong,
+.original-cell small,
+.entry-reason,
+.source-error {
+	display: block;
+}
+
+.original-cell small {
+	margin-top: 3px;
+	color: #829087;
+	font-family: "Manrope Variable", sans-serif;
+	font-size: 9px;
+}
+
+.entry-reason {
+	max-width: 190px;
+	margin-top: 5px;
+	color: #a0433e;
+	font-family: "Manrope Variable", sans-serif;
+	font-size: 9px;
+	white-space: normal;
 }
 
 .reason-cell {
-	min-width: 240px;
+	min-width: 160px;
+	max-width: 250px;
 	color: #66756c;
 	font-size: 10px;
+	white-space: normal;
+}
+
+.source-badge {
+	display: inline-flex;
+	min-width: 88px;
+	justify-content: center;
+	padding: 5px 7px;
+	border: 1px solid transparent;
+	border-radius: 5px;
+	font-family: var(--mono);
+	font-size: 9px;
+	font-weight: 500;
+}
+
+.source-badge--success {
+	border-color: #d6e9da;
+	background: #f0f8f1;
+	color: #347148;
+}
+
+.source-badge--not_found {
+	border-color: #efdfbd;
+	background: #fff8e9;
+	color: #976214;
+}
+
+.source-badge--error {
+	border-color: #edd6d4;
+	background: #fdf2f1;
+	color: #a0433e;
+}
+
+.source-badge--not_sent,
+.source-badge--pending {
+	border-color: #dce4de;
+	background: #f5f7f5;
+	color: #748078;
+}
+
+.source-error {
+	max-width: 160px;
+	margin-top: 4px;
+	color: #a0433e;
+	font-size: 9px;
 	white-space: normal;
 }
 

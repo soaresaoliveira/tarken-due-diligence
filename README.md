@@ -26,5 +26,5 @@ npm install
 npm run dev
 ```
 
-A aplicação normaliza e valida CNPJs localmente. Nesta etapa, não há consultas à
-BrasilAPI, ao IBAMA ou a qualquer serviço externo.
+A aplicação valida CNPJs localmente e consulta a BrasilAPI por meio do backend.
+Nesta etapa, não há consultas ao IBAMA.

@@ -1,41 +1,19 @@
-import { createServer } from 'node:http'
+import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
+import { pathToFileURL } from 'node:url'
+import { parseCnpjLines } from '../../shared/cnpj.js'
+import {
+  lookupBrasilApi,
+  type ReceitaResult,
+} from './brasilapi.js'
 
-type Classification = 'APROVAR' | 'REVISAR' | 'RECUSAR'
+export type ReceitaLookup = (cnpj: string) => Promise<ReceitaResult>
 
-type DemoProfile = {
-  supplier: string
-  segment: string
-  signal: string
-  classification: Classification
-}
-
-const demoProfiles: DemoProfile[] = [
-  {
-    supplier: 'Fornecedor modelo A',
-    segment: 'Grãos · demonstração',
-    signal: 'Sinal ilustrativo: baixo',
-    classification: 'APROVAR',
-  },
-  {
-    supplier: 'Fornecedor modelo B',
-    segment: 'Insumos · demonstração',
-    signal: 'Sinal ilustrativo: atenção',
-    classification: 'REVISAR',
-  },
-  {
-    supplier: 'Fornecedor modelo C',
-    segment: 'Logística · demonstração',
-    signal: 'Sinal ilustrativo: alto',
-    classification: 'RECUSAR',
-  },
-]
-
-function sendJson(response: import('node:http').ServerResponse, status: number, body: unknown) {
+function sendJson(response: ServerResponse, status: number, body: unknown) {
   response.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' })
   response.end(JSON.stringify(body))
 }
 
-async function readJson(request: import('node:http').IncomingMessage): Promise<unknown> {
+async function readJson(request: IncomingMessage): Promise<unknown> {
   let body = ''
   for await (const chunk of request) {
     body += chunk.toString()
@@ -43,51 +21,78 @@ async function readJson(request: import('node:http').IncomingMessage): Promise<u
   return JSON.parse(body)
 }
 
-const server = createServer(async (request, response) => {
-  const path = new URL(request.url ?? '/', 'http://localhost').pathname
-
-  if (request.method === 'GET' && path === '/api/health') {
-    sendJson(response, 200, { status: 'ok', mode: 'local-demo' })
-    return
+function errorResult(cnpj: string): ReceitaResult {
+  return {
+    cnpj,
+    razao_social: null,
+    situacao_cadastral: null,
+    data_abertura: null,
+    cnae: null,
+    endereco: null,
+    telefone: null,
+    status: 'ERROR',
+    error: 'Falha inesperada durante a consulta à BrasilAPI.',
   }
+}
 
-  if (request.method === 'POST' && path === '/api/mock-analysis') {
-    let body: unknown
-    try {
-      body = await readJson(request)
-    } catch {
-      sendJson(response, 400, { error: 'O corpo da solicitação precisa ser JSON.' })
+export function createApiServer(receitaLookup: ReceitaLookup = lookupBrasilApi) {
+  return createServer(async (request, response) => {
+    const path = new URL(request.url ?? '/', 'http://localhost').pathname
+
+    if (request.method === 'GET' && path === '/api/health') {
+      sendJson(response, 200, { status: 'ok' })
       return
     }
 
-    const cnpjs =
-      typeof body === 'object' && body !== null && 'cnpjs' in body
-        ? (body as { cnpjs: unknown }).cnpjs
-        : null
+    if (request.method === 'POST' && path === '/api/receita/cnpjs') {
+      let body: unknown
+      try {
+        body = await readJson(request)
+      } catch {
+        sendJson(response, 400, { error: 'O corpo da solicitação precisa ser JSON válido.' })
+        return
+      }
 
-    if (!Array.isArray(cnpjs)) {
-      sendJson(response, 400, { error: 'Envie uma lista de linhas para a demonstração.' })
+      const cnpjs =
+        typeof body === 'object' && body !== null && 'cnpjs' in body
+          ? (body as { cnpjs: unknown }).cnpjs
+          : null
+
+      if (!Array.isArray(cnpjs) || !cnpjs.every((cnpj) => typeof cnpj === 'string')) {
+        sendJson(response, 400, { error: 'Envie uma lista de CNPJs em formato texto.' })
+        return
+      }
+
+      const batch = parseCnpjLines(cnpjs.join('\n'))
+      const results: ReceitaResult[] = []
+
+      // Consultas sequenciais mantêm previsível a carga sobre a API pública.
+      for (const entry of batch.valid) {
+        try {
+          results.push(await receitaLookup(entry.cnpj))
+        } catch {
+          results.push(errorResult(entry.cnpj))
+        }
+      }
+
+      sendJson(response, 200, {
+        results,
+        invalid: batch.invalid,
+        duplicates: batch.duplicates,
+      })
       return
     }
 
-    const entries = cnpjs
-      .filter((value): value is string => typeof value === 'string')
-      .map((value) => value.trim())
-      .filter(Boolean)
+    sendJson(response, 404, { error: 'Rota não encontrada.' })
+  })
+}
 
-    const results = entries.map((cnpj, index) => ({
-      cnpj,
-      ...demoProfiles[index % demoProfiles.length],
-    }))
+const isMainModule =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href
 
-    sendJson(response, 200, { mode: 'mock', results })
-    return
-  }
-
-  sendJson(response, 404, { error: 'Rota não encontrada.' })
-})
-
-const port = Number(process.env.PORT ?? 3001)
-server.listen(port, '127.0.0.1', () => {
-  console.log(`API de demonstração disponível em http://127.0.0.1:${port}`)
-})
+if (isMainModule) {
+  const port = Number(process.env.PORT ?? 3001)
+  createApiServer().listen(port, '127.0.0.1', () => {
+    console.log(`API local disponível em http://127.0.0.1:${port}`)
+  })
+}

@@ -473,7 +473,7 @@ Demonstrar:
 
 ### Status
 
-`⬜ PENDENTE`
+`🟢 CONCLUÍDA`
 
 ------------------------------------------------------------------------
 
@@ -838,7 +838,7 @@ Não permitido sem alteração formal do plano:
   0 --- Preparação    🟢                                    
   1 --- Estrutura     🟢                                    
   2 --- CNPJ          🟢                                    
-  3 --- Receita       ⬜                                    
+  3 --- Receita       🟢                                    
   4 --- IBAMA         ⬜                                    
   5 --- Merge/Risco   ⬜                                    
   6 --- Interface     ⬜                                    
@@ -1013,6 +1013,23 @@ Resultado: testes aprovados; motivos exibidos para tamanho incorreto, texto sem
 dígitos e falha de cada dígito verificador; BrasilAPI/IBAMA não chamados.
 Pendências: Etapa 3 não iniciada.
 Decisões: normalização e validação determinísticas no frontend, sem serviços externos.
+
+CHECKPOINT — ETAPA 3
+
+Status: CONCLUÍDA
+Data: 28/09/2026
+Commit: feat: integrate brasilapi cnpj data
+Evidência: 27 testes automatizados aprovados; Chromium confirmou payload ao backend
+somente com CNPJ válido normalizado e exibiu SUCCESS, NOT_FOUND e ERROR via stub.
+Consulta real controlada de 00.000.000/0001-91 chegou à BrasilAPI e recebeu HTTP 403;
+frontend exibiu ERROR, sem chamadas externas diretas do browser.
+Testes realizados: 11 do validador CNPJ; 12 do serviço BrasilAPI e 4 da rota HTTP;
+lint; builds frontend/backend; teste Chromium com inválidos, duplicados e estados.
+Resultado: status de consulta preservados; inválidos/duplicados não consultados;
+API real inacessível neste ambiente (HTTP 403), sem retry para esse bloqueio.
+Pendências: Etapa 4 não iniciada.
+Decisões: retry único somente para erros transitórios configurados; 403, 404 e 429
+não são repetidos. Nenhuma alteração de escopo; Master Plan permanece v0.2.
 
 ------------------------------------------------------------------------
 
