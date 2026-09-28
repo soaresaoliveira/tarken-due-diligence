@@ -406,7 +406,7 @@ Ter a aplicação rodando com a estrutura visual inicial.
 
 ### Status
 
-`⬜ PENDENTE`
+`🟢 CONCLUÍDA`
 
 ------------------------------------------------------------------------
 
@@ -836,7 +836,7 @@ Não permitido sem alteração formal do plano:
   Etapa               Status   Data conclusão   Evidência   Observação
   ------------------- -------- ---------------- ----------- ------------
   0 --- Preparação    🟢                                    
-  1 --- Estrutura     ⬜                                    
+  1 --- Estrutura     🟢                                    
   2 --- CNPJ          ⬜                                    
   3 --- Receita       ⬜                                    
   4 --- IBAMA         ⬜                                    
@@ -983,6 +983,21 @@ Resultado:
 Pendências:
 Decisões:
 ```
+
+CHECKPOINT — ETAPA 1
+
+Status: CONCLUÍDA
+Data: 28/09/2026
+Commit: feat: create initial due diligence interface
+Evidência: execução no Chromium em desktop (1440x1000) e mobile (390x844),
+com duas entradas e duas linhas mockadas; endpoint de saúde local respondeu ok.
+Testes realizados: lint do frontend; build do frontend e backend; API local
+com duas entradas; fluxo Chromium com inserção de dois CNPJs e exibição de
+resultados mockados em desktop e mobile.
+Resultado: testes aprovados; sem erros de runtime ou console, sem requisições
+externas e sem overflow horizontal na viewport móvel.
+Pendências: Etapa 2 não iniciada.
+Decisões: manter resultados fictícios e não consultar fontes nesta etapa.
 
 ------------------------------------------------------------------------
 

@@ -18,3 +18,13 @@ em CSV e PDF.
 
 O projeto será desenvolvido por etapas. O [MASTER_PLAN.md](MASTER_PLAN.md) é a
 fonte de verdade para escopo, decisões, critérios de aceite e andamento.
+
+## Execução local
+
+```sh
+npm install
+npm run dev
+```
+
+A interface usa fixtures locais para demonstração. Nesta etapa, não há consultas
+externas nem validação dos CNPJs informados.

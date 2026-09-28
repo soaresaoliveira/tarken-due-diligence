@@ -1,0 +1,16 @@
+{
+  "name": "tarken-due-diligence",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently -k --names api,web \"npm run dev --workspace @tarken/api\" \"npm run dev --workspace @tarken/web\"",
+    "build": "npm run build --workspace @tarken/web && npm run build --workspace @tarken/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
