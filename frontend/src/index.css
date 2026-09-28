@@ -588,6 +588,51 @@ tbody tr:last-child td {
 	font-size: 10px;
 }
 
+.original-cell {
+	min-width: 180px;
+	color: #44564b;
+	font-family: var(--mono);
+	font-size: 10px;
+}
+
+.reason-cell {
+	min-width: 240px;
+	color: #66756c;
+	font-size: 10px;
+	white-space: normal;
+}
+
+.validation-badge {
+	display: inline-flex;
+	min-width: 92px;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	padding: 5px 8px;
+	border: 1px solid transparent;
+	border-radius: 5px;
+	font-size: 9px;
+	font-weight: 800;
+}
+
+.validation-badge--valid {
+	border-color: #d6e9da;
+	background: #f0f8f1;
+	color: #347148;
+}
+
+.validation-badge--invalid {
+	border-color: #edd6d4;
+	background: #fdf2f1;
+	color: #a0433e;
+}
+
+.validation-badge--duplicate {
+	border-color: #efdfbd;
+	background: #fff8e9;
+	color: #976214;
+}
+
 .signal-label {
 	color: #67766d;
 	font-size: 10px;

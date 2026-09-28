@@ -8,7 +8,8 @@
   ],
   "scripts": {
     "dev": "concurrently -k --names api,web \"npm run dev --workspace @tarken/api\" \"npm run dev --workspace @tarken/web\"",
-    "build": "npm run build --workspace @tarken/web && npm run build --workspace @tarken/api"
+    "build": "npm run build --workspace @tarken/web && npm run build --workspace @tarken/api",
+    "test": "tsx --test frontend/src/utils/cnpj.test.ts"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

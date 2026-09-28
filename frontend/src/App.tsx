@@ -1,79 +1,36 @@
 import { useState, type FormEvent } from 'react'
 import {
-  ArrowRight,
   BadgeCheck,
-  Building2,
   CircleAlert,
   ClipboardList,
-  LoaderCircle,
   ShieldCheck,
   Sparkles,
   Trash2,
 } from 'lucide-react'
-
-type Classification = 'APROVAR' | 'REVISAR' | 'RECUSAR'
-
-type DemoResult = {
-  cnpj: string
-  supplier: string
-  segment: string
-  signal: string
-  classification: Classification
-}
+import { parseCnpjLines, type CnpjBatch } from './utils/cnpj.ts'
 
 const starterInput = [
-  '00.000.000/0001-00',
-  '11.111.111/0001-11',
-  '22.222.222/0001-22',
+  '11.222.333/0001-81',
+  '11222333000181',
+  '11.222.333/0001-82',
+  '123',
+  'texto sem números',
 ].join('\n')
 
 function App() {
   const [input, setInput] = useState(starterInput)
-  const [results, setResults] = useState<DemoResult[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [batch, setBatch] = useState<CnpjBatch | null>(null)
 
-  const cnpjs = input.split(/\r?\n/).map((value) => value.trim()).filter(Boolean)
-  const countFor = (classification: Classification) =>
-    results.filter((result) => result.classification === classification).length
+  const inputCount = input.split(/\r?\n/).filter((line) => line.trim()).length
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setError('')
-    setIsLoading(true)
-
-    try {
-      const response = await fetch('/api/mock-analysis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cnpjs }),
-      })
-      const payload = (await response.json()) as {
-        results?: DemoResult[]
-        error?: string
-      }
-
-      if (!response.ok || !payload.results) {
-        throw new Error(payload.error ?? 'Não foi possível carregar a demonstração.')
-      }
-
-      setResults(payload.results)
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : 'Falha ao carregar os dados demonstrativos.',
-      )
-      setResults([])
-    } finally {
-      setIsLoading(false)
-    }
+    setBatch(parseCnpjLines(input))
   }
 
   function clearInput() {
     setInput('')
-    setResults([])
-    setError('')
+    setBatch(null)
   }
 
   return (
@@ -88,7 +45,7 @@ function App() {
           </a>
           <div className="environment-tag">
             <span className="environment-tag__dot" />
-            <span>Etapa 1 · Demonstração</span>
+            <span>Etapa 2 · Validação</span>
           </div>
         </div>
       </header>
@@ -96,23 +53,23 @@ function App() {
       <main className="main-content" id="inicio">
         <section className="page-heading" aria-labelledby="page-title">
           <div>
-            <p className="eyebrow"><span>01</span> / ANÁLISE DE FORNECEDORES</p>
-            <h1 id="page-title">Visão inicial de fornecedores</h1>
+            <p className="eyebrow"><span>02</span> / ENTRADA DE FORNECEDORES</p>
+            <h1 id="page-title">Validação de CNPJs</h1>
             <p className="page-heading__description">
-              Uma primeira leitura, organizada em um só lugar.
+              Normalize entradas e identifique erros antes da consulta.
             </p>
           </div>
           <div className="heading-stamp" aria-label="Protótipo visual">
             <span className="heading-stamp__icon"><BadgeCheck size={16} /></span>
-            <span>Protótipo visual</span>
+            <span>Validação local</span>
           </div>
         </section>
 
         <aside className="demo-banner" aria-label="Aviso sobre dados demonstrativos">
           <span className="demo-banner__icon"><Sparkles size={17} /></span>
           <p>
-            <strong>Ambiente demonstrativo.</strong> Não há validação de CNPJ nem
-            consultas a fontes externas. Todos os resultados são fictícios.
+            <strong>Processamento local.</strong> A validação segue o cálculo dos
+            dígitos verificadores e não consulta fontes externas.
           </p>
           <span className="demo-banner__tag">MOCK</span>
         </aside>
@@ -122,26 +79,29 @@ function App() {
             <div className="panel-kicker"><span>01</span><span>ENTRADA</span></div>
             <div className="input-panel__heading">
               <h2 id="input-title">Lista de CNPJs</h2>
-              <p>Insira um por linha para compor a demonstração.</p>
+              <p>Insira um CNPJ por linha, com ou sem máscara.</p>
             </div>
 
             <form onSubmit={handleSubmit}>
               <label className="field-label" htmlFor="cnpj-list">
                 CNPJs para análise
-                <span>{cnpjs.length} {cnpjs.length === 1 ? 'linha' : 'linhas'}</span>
+                <span>{inputCount} {inputCount === 1 ? 'informado' : 'informados'}</span>
               </label>
               <textarea
                 id="cnpj-list"
                 name="cnpjs"
                 value={input}
-                onChange={(event) => setInput(event.target.value)}
-                rows={6}
+                onChange={(event) => {
+                  setInput(event.target.value)
+                  setBatch(null)
+                }}
+                rows={7}
                 spellCheck={false}
                 aria-describedby="input-note"
               />
               <div className="input-actions">
                 <span className="input-note" id="input-note">
-                  Entradas de exemplo, sem verificação.
+                  Máscara opcional; pontuação é removida e linhas vazias ignoradas.
                 </span>
                 <button
                   className="clear-button"
@@ -154,18 +114,14 @@ function App() {
                   <Trash2 size={15} />
                 </button>
               </div>
-              <button className="submit-button" type="submit" disabled={!cnpjs.length || isLoading}>
-                {isLoading ? (
-                  <LoaderCircle className="spin" size={17} aria-hidden="true" />
-                ) : (
-                  <ArrowRight size={17} aria-hidden="true" />
-                )}
-                <span>{isLoading ? 'Preparando demonstração' : 'Consultar fornecedores'}</span>
+              <button className="submit-button" type="submit" disabled={!inputCount}>
+                <BadgeCheck size={17} aria-hidden="true" />
+                <span>Validar entradas</span>
               </button>
             </form>
             <p className="input-panel__footnote">
               <CircleAlert size={14} />
-              A consulta usa somente dados locais de demonstração.
+              Os CNPJs não são enviados para serviços externos.
             </p>
           </section>
 
@@ -173,66 +129,60 @@ function App() {
             <div className="results-heading">
               <div>
                 <div className="panel-kicker"><span>02</span><span>RESULTADOS</span></div>
-                <h2 id="results-title">Resumo da análise</h2>
+                <h2 id="results-title">Resultado da validação</h2>
               </div>
-              {results.length > 0 && (
-                <div className="result-count">{results.length} registros de demonstração</div>
+              {batch && (
+                <div className="result-count">{batch.informedCount} {batch.informedCount === 1 ? 'entrada avaliada' : 'entradas avaliadas'}</div>
               )}
             </div>
 
-            {error && <div className="error-message" role="alert">{error}</div>}
-
-            {results.length > 0 ? (
+            {batch && batch.entries.length > 0 ? (
               <>
-                <div className="summary-strip" aria-label="Resumo demonstrativo">
+                <div className="summary-strip" aria-label="Resumo da validação">
                   <div className="summary-item summary-item--total">
-                    <span className="summary-item__label">Recebidos</span>
-                    <strong>{results.length.toString().padStart(2, '0')}</strong>
+                    <span className="summary-item__label">Informados</span>
+                    <strong>{batch.informedCount.toString().padStart(2, '0')}</strong>
                   </div>
                   <div className="summary-item summary-item--approve">
-                    <span className="summary-item__label">Aprovar</span>
-                    <strong>{countFor('APROVAR').toString().padStart(2, '0')}</strong>
+                    <span className="summary-item__label">Válidos</span>
+                    <strong>{batch.valid.length.toString().padStart(2, '0')}</strong>
                   </div>
                   <div className="summary-item summary-item--review">
-                    <span className="summary-item__label">Revisar</span>
-                    <strong>{countFor('REVISAR').toString().padStart(2, '0')}</strong>
+                    <span className="summary-item__label">Inválidos</span>
+                    <strong>{batch.invalid.length.toString().padStart(2, '0')}</strong>
                   </div>
                   <div className="summary-item summary-item--refuse">
-                    <span className="summary-item__label">Recusar</span>
-                    <strong>{countFor('RECUSAR').toString().padStart(2, '0')}</strong>
+                    <span className="summary-item__label">Duplicados removidos</span>
+                    <strong>{batch.duplicates.length.toString().padStart(2, '0')}</strong>
                   </div>
                 </div>
 
                 <div className="table-frame">
                   <table>
-                    <caption className="visually-hidden">Resultados fictícios da demonstração</caption>
+                    <caption className="visually-hidden">Resultado local da validação dos CNPJs informados</caption>
                     <thead>
                       <tr>
-                        <th scope="col">Fornecedor demonstrativo</th>
-                        <th scope="col">CNPJ informado</th>
-                        <th scope="col">Sinal de teste</th>
-                        <th scope="col">Resultado mockado</th>
+                        <th scope="col">Entrada original</th>
+                        <th scope="col">CNPJ normalizado</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Motivo</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {results.map((result, index) => (
-                        <tr className="result-row" key={`${result.cnpj}-${index}`}>
+                      {batch.entries.map((entry, index) => (
+                        <tr className="result-row" key={`${entry.cnpj}-${index}`}>
+                          <td className="original-cell">{entry.original}</td>
+                          <td className="cnpj-cell">{entry.cnpj || '—'}</td>
                           <td>
-                            <div className="supplier-cell">
-                              <span className="supplier-cell__icon"><Building2 size={16} /></span>
-                              <span>
-                                <strong>{result.supplier}</strong>
-                                <small>{result.segment}</small>
-                              </span>
-                            </div>
-                          </td>
-                          <td className="cnpj-cell">{result.cnpj}</td>
-                          <td><span className="signal-label">{result.signal}</span></td>
-                          <td>
-                            <span className={`risk-badge risk-badge--${result.classification.toLowerCase()}`}>
-                              <span className="risk-badge__dot" />
-                              {result.classification}
+                            <span className={`validation-badge validation-badge--${entry.status}`}>
+                              {entry.status === 'valid' && <BadgeCheck size={13} />}
+                              {entry.status === 'invalid' && <CircleAlert size={13} />}
+                              {entry.status === 'duplicate' && <ClipboardList size={13} />}
+                              {entry.status === 'valid' ? 'VÁLIDO' : entry.status === 'invalid' ? 'INVÁLIDO' : 'DUPLICADO'}
                             </span>
+                          </td>
+                          <td className="reason-cell">
+                            {entry.reason ?? 'Dois dígitos verificadores conferidos.'}
                           </td>
                         </tr>
                       ))}
@@ -240,15 +190,15 @@ function App() {
                   </table>
                 </div>
                 <p className="results-footnote">
-                  <Sparkles size={14} />
-                  Classificações e sinais são fixtures visuais, não representam avaliação real.
+                  <ShieldCheck size={14} />
+                  Somente CNPJs válidos e únicos compõem o conjunto aceito; nenhuma consulta foi feita.
                 </p>
               </>
             ) : (
               <div className="empty-state">
                 <div className="empty-state__icon"><ClipboardList size={22} /></div>
-                <h3>Os registros aparecerão aqui</h3>
-                <p>A tabela será preenchida com exemplos fictícios ao iniciar a demonstração.</p>
+                <h3>As entradas serão verificadas aqui</h3>
+                <p>Linhas vazias serão ignoradas; inválidos e duplicados terão seus motivos identificados.</p>
               </div>
             )}
           </section>

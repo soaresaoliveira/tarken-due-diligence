@@ -440,7 +440,7 @@ Testar:
 
 ### Status
 
-`⬜ PENDENTE`
+`🟢 CONCLUÍDA`
 
 ------------------------------------------------------------------------
 
@@ -837,7 +837,7 @@ Não permitido sem alteração formal do plano:
   ------------------- -------- ---------------- ----------- ------------
   0 --- Preparação    🟢                                    
   1 --- Estrutura     🟢                                    
-  2 --- CNPJ          ⬜                                    
+  2 --- CNPJ          🟢                                    
   3 --- Receita       ⬜                                    
   4 --- IBAMA         ⬜                                    
   5 --- Merge/Risco   ⬜                                    
@@ -998,6 +998,21 @@ Resultado: testes aprovados; sem erros de runtime ou console, sem requisições
 externas e sem overflow horizontal na viewport móvel.
 Pendências: Etapa 2 não iniciada.
 Decisões: manter resultados fictícios e não consultar fontes nesta etapa.
+
+CHECKPOINT — ETAPA 2
+
+Status: CONCLUÍDA
+Data: 28/09/2026
+Commit: feat: validate and normalize cnpjs
+Evidência: teste browser do exemplo literal (5 entradas, 3 inválidas, 2 duplicadas)
+e de CNPJ válido com máscara/sem máscara (1 válido único, 1 duplicado); zero
+requisições API/externas; viewport mobile 390x844 sem overflow.
+Testes realizados: 11 testes unitários; lint frontend; build frontend e backend;
+teste Chromium com entradas mistas, duplicidade e entradas somente inválidas.
+Resultado: testes aprovados; motivos exibidos para tamanho incorreto, texto sem
+dígitos e falha de cada dígito verificador; BrasilAPI/IBAMA não chamados.
+Pendências: Etapa 3 não iniciada.
+Decisões: normalização e validação determinísticas no frontend, sem serviços externos.
 
 ------------------------------------------------------------------------
 

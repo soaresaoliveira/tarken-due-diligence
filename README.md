@@ -26,5 +26,5 @@ npm install
 npm run dev
 ```
 
-A interface usa fixtures locais para demonstração. Nesta etapa, não há consultas
-externas nem validação dos CNPJs informados.
+A aplicação normaliza e valida CNPJs localmente. Nesta etapa, não há consultas à
+BrasilAPI, ao IBAMA ou a qualquer serviço externo.
