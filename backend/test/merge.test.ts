@@ -70,6 +70,42 @@ test('faz merge por CNPJ, preserva campos das fontes e a ordem solicitada', () =
   assert.ok(results.every((result) => result.data_consulta === CONSULTED_AT))
 })
 
+test('Autos SIM sem embargo confirmado preserva evidência sem alterar classificação', () => {
+  const [result] = mergeResults(
+    [FIRST_CNPJ],
+    [receitaResult(FIRST_CNPJ)],
+    [ibamaResult(FIRST_CNPJ, { auto: 'SIM', embargo: 'NÃO', environmental: 'SIM' })],
+    CONSULTED_AT,
+  )
+
+  assert.equal(result?.ibama_auto_infracao, 'SIM')
+  assert.equal(result?.ibama_embargo, 'NÃO')
+  assert.equal(result?.tem_embargo_ibama, 'NÃO')
+  assert.equal(result?.classificacao_risco, 'APROVAR')
+})
+
+test('Autos NÃO não converte Embargos ERROR em ausência de embargo', () => {
+  const [result] = mergeResults(
+    [FIRST_CNPJ],
+    [receitaResult(FIRST_CNPJ)],
+    [ibamaResult(FIRST_CNPJ, {
+      auto: 'NÃO',
+      embargo: 'NA',
+      embargoStatus: 'ERROR',
+      environmental: 'NÃO',
+    })],
+    CONSULTED_AT,
+  )
+
+  assert.equal(result?.status_ibama_auto, 'SUCCESS')
+  assert.equal(result?.ibama_auto_infracao, 'NÃO')
+  assert.equal(result?.status_ibama_embargo, 'ERROR')
+  assert.equal(result?.ibama_embargo, 'NA')
+  assert.equal(result?.resultado_ambiental, 'NÃO')
+  assert.equal(result?.tem_embargo_ibama, 'NA')
+  assert.equal(result?.classificacao_risco, 'REVISAR')
+})
+
 test('Autos ERROR com Embargos NÃO preserva ERROR, consolida NÃO e permite APROVAR', () => {
   const [result] = mergeResults(
     [FIRST_CNPJ],

@@ -1,6 +1,6 @@
 # TARKEN --- CASE DE DUE DILIGENCE DE FORNECEDORES
 
-## MASTER PLAN v0.6
+## MASTER PLAN v0.7
 
 **Status:** Em execução\
 **Última atualização:** 28/09/2026\
@@ -241,28 +241,50 @@ Nunca transformar:
 
 # 6. CONSOLIDAÇÃO DO IBAMA
 
-As duas fontes do IBAMA serão tratadas como evidências complementares.
+Autos de Infração e Áreas Embargadas são evidências complementares, mas têm
+significados distintos. `tem_embargo_ibama` representa exclusivamente
+embargo confirmado pela fonte de Áreas Embargadas. Autos de Infração não
+confirmam nem descartam embargo e, isoladamente, não alteram a classificação.
 
-Exemplo:
+| Autos de Infração | Áreas Embargadas | `tem_embargo_ibama` |
+| --- | --- | --- |
+| NÃO | NÃO | NÃO |
+| SIM | NÃO | NÃO |
+| ERROR | NÃO | NÃO |
+| NÃO | ERROR | NA |
+| ERROR | ERROR | NA |
+| qualquer resultado | SIM | SIM |
+
+O campo `resultado_ambiental`, quando apresentado, é uma consolidação geral
+de evidências e não substitui `tem_embargo_ibama` na classificação. Assim,
+Autos `NÃO` com Embargos `ERROR` pode resultar em `resultado_ambiental = NÃO`,
+mas `tem_embargo_ibama` continua `NA` e a decisão é `REVISAR`.
+
+O status individual de cada fonte deve ser preservado. Em particular,
+Autos `ERROR` com Áreas Embargadas `NÃO` mantém o erro dos Autos, sem
+transformá-lo em ausência. `ERROR` ou `NA` da fonte de Áreas Embargadas não
+pode ser convertido em `NÃO`.
+
+Exemplo de evidência complementar sem embargo confirmado:
 
 ``` text
-Autos = ERROR
+Autos = SIM
 Embargos = NÃO
-Resultado ambiental = NÃO
+tem_embargo_ibama = NÃO
 ```
 
-desde que a fonte disponível permita concluir a dimensão avaliada.
-
-Outro exemplo:
+Quando a fonte de Áreas Embargadas está indisponível, a ausência de Auto de
+Infração não permite determinar se há embargo:
 
 ``` text
-Autos = ERROR
+Autos = NÃO
 Embargos = ERROR
-Resultado ambiental = NA
+tem_embargo_ibama = NA
 ```
 
-A implementação deve registrar os estados individuais das fontes, mesmo
-quando houver um resultado consolidado.
+Se ambas as fontes estiverem em `ERROR`, `tem_embargo_ibama` é `NA`. Se a
+fonte de Áreas Embargadas confirmar embargo, `tem_embargo_ibama` é `SIM`,
+independentemente do resultado de Autos.
 
 ------------------------------------------------------------------------
 
@@ -281,9 +303,11 @@ Quando:
 
 Quando:
 
--   empresa ATIVA possui embargo;
+-   há embargo confirmado pela fonte de Áreas Embargadas;
+-   `tem_embargo_ibama` é `NA`;
 -   informação crítica necessária para aprovação não pôde ser
     confirmada;
+-   Receita retorna `ERROR` sem condição de `RECUSAR`;
 -   existir indicador definido no escopo que exija análise manual.
 
 ## APROVAR
@@ -291,15 +315,20 @@ Quando:
 Quando:
 
 -   CNPJ válido;
--   empresa encontrada;
+-   Receita consultada com `SUCCESS` e empresa encontrada;
 -   situação ATIVA;
--   nenhuma evidência de embargo;
--   fontes críticas consultadas com sucesso;
+-   `tem_embargo_ibama` é `NÃO`;
+-   nenhuma informação crítica necessária para a decisão está indeterminada;
 -   nenhum bloqueio definido pela regra.
 
 Toda classificação deve possuir:
 
 `motivo_classificacao`
+
+### Prioridade
+
+Aplicar as condições nesta prioridade: `RECUSAR` > `REVISAR` > `APROVAR`.
+Nunca converter `ERROR` ou `NA` em `NÃO`.
 
 ------------------------------------------------------------------------
 
@@ -729,6 +758,11 @@ Preparar a apresentação e os arquivos finais.
 Usar inicialmente os mesmos CNPJs presentes no PDF de referência
 fornecido pela Tarken.
 
+O PDF de referência é material de referência para estrutura, dados e
+validação, não uma regra normativa de classificação. Os dados do case não
+precisam ser idênticos aos do PDF; divergências são aceitáveis quando seu
+racional estiver explicado.
+
 O arquivo de referência contém exemplos de empresas ativas, empresas com
 embargo, empresa inapta e CNPJ inválido.
 
@@ -857,6 +891,24 @@ Status permitidos:
 ------------------------------------------------------------------------
 
 # 16. HISTÓRICO DE VERSÕES
+
+## v0.7 --- 28/09/2026
+
+### Registro das regras definitivas de classificação
+
+-   **Versão anterior:** v0.6
+-   **Nova versão:** v0.7
+-   **Data:** 28/09/2026
+-   **Motivo:** registrar explicitamente as regras de classificação e o
+  significado específico de `tem_embargo_ibama` definidos para o case.
+-   **Alteração:** documentadas a separação entre Autos de Infração e Áreas
+  Embargadas, a matriz de consolidação do embargo, a prioridade das decisões,
+  a preservação de `ERROR`/`NA` e a natureza não normativa do PDF de referência.
+  Incluída cobertura de testes para Autos `SIM` sem embargo e fonte de
+  Embargos indeterminada.
+-   **Impacto:** baixo; documentação e testes, sem alteração de comportamento
+  do Risk Engine, integração ou arquitetura.
+-   **Decisão:** aprovada.
 
 ## v0.6 --- 28/09/2026
 
