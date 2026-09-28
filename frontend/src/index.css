@@ -1020,6 +1020,33 @@ tbody tr:last-child td {
 	font-size: 11px;
 }
 
+.export-actions {
+	display: flex;
+	justify-content: flex-end;
+	margin: 12px 0;
+}
+
+.export-button {
+	display: inline-flex;
+	min-height: 38px;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border: 1px solid #cbdacf;
+	border-radius: 5px;
+	background: #fff;
+	color: var(--forest-dark);
+	font-size: 11px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.export-button:hover {
+	border-color: var(--fern);
+	background: #f3f8f4;
+}
+
 .loading-state {
 	display: flex;
 	min-height: 72px;
@@ -1365,6 +1392,14 @@ tbody tr:last-child td {
 }
 
 @media (max-width: 700px) {
+	.export-actions {
+		justify-content: stretch;
+	}
+
+	.export-button {
+		width: 100%;
+	}
+
 	.supplier-table-frame {
 		display: none;
 	}

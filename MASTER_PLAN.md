@@ -1,6 +1,6 @@
 # TARKEN --- CASE DE DUE DILIGENCE DE FORNECEDORES
 
-## MASTER PLAN v0.5
+## MASTER PLAN v0.6
 
 **Status:** Em execução\
 **Última atualização:** 28/09/2026\
@@ -614,7 +614,7 @@ Entregar o arquivo operacional completo.
 
 ### Status
 
-`⬜ PENDENTE`
+`🟢 CONCLUÍDA`
 
 ------------------------------------------------------------------------
 
@@ -842,7 +842,7 @@ Não permitido sem alteração formal do plano:
   4 --- IBAMA         🟢
   5 --- Merge/Risco   🟢
   6 --- Interface     🟢
-  7 --- CSV           ⬜                                    
+  7 --- CSV           🟢
   8 --- PDF           ⬜                                    
   9 --- Testes        ⬜                                    
   10 --- Entrega      ⬜                                    
@@ -857,6 +857,21 @@ Status permitidos:
 ------------------------------------------------------------------------
 
 # 16. HISTÓRICO DE VERSÕES
+
+## v0.6 --- 28/09/2026
+
+### Fechamento formal da Etapa 7
+
+-   **Versão anterior:** v0.5
+-   **Nova versão:** v0.6
+-   **Data:** 28/09/2026
+-   **Motivo:** registrar a conclusão da exportação CSV após implementação e
+  auditoria estrutural.
+-   **Alteração:** atualização do status da Etapa 7 e registro do formato,
+  validações e risco conhecido; nenhum escopo futuro foi alterado.
+-   **Impacto:** baixo; exportação operacional sem alteração do contrato API,
+  backend, Risk Engine ou regras de negócio.
+-   **Decisão:** aprovada.
 
 ## v0.5 --- 28/09/2026
 
@@ -1159,6 +1174,37 @@ Pendências: Etapa 7 não iniciada; CSV e PDF permanecem nas etapas seguintes.
 Decisões: totais calculados a partir de `results + invalid`, com duplicados fora;
 classificação consumida do backend, sem regra de risco no frontend. Etapa 7
 permanece pendente.
+
+CHECKPOINT — ETAPA 7
+
+Status: CONCLUÍDA
+Data: 28/09/2026
+Commit: docs: close csv export stage
+Implementação: exportação CSV no frontend a partir dos resultados carregados,
+sem nova rota. Uma linha por fornecedor avaliado; fonte dos dados preservada e
+objetos CNAE/endereço achatados. Arquivo delimitado por `;`, UTF-8 com BOM,
+registros CRLF e escaping de aspas, delimitadores e quebras de linha.
+Estrutura: 31 colunas auditadas por parse estrutural; todas as linhas mantêm a
+mesma quantidade de campos. `SIM`/`NÃO`/`NA` e `SUCCESS`/`ERROR`/`NOT_FOUND`
+permanecem distintos. Nulos são células vazias. CNPJs inválidos são exportados
+como RECUSAR, sem status de fonte inventado. Duplicados não geram linhas; a
+quantidade descartada é preservada por CNPJ. O CSV não depende do filtro visual.
+Evidência: testes estruturais recuperaram zeros à esquerda, acentos, `;`, aspas,
+quebras de linha, CNAE, endereço, classificações e motivos. Playwright confirmou
+download, nome/data, BOM, conteúdo integral com filtro aplicado, cenário somente
+inválidos e ausência de download após falha total.
+Testes realizados: `npm test` — 78/78 aprovados; lint frontend aprovado; builds
+frontend e backend aprovados; `git diff --check` aprovado; Playwright — 3/3
+aprovados.
+Resultado: gates e critérios da Etapa 7 aprovados.
+Risco conhecido: formula injection não é mitigada; valores-fonte são preservados
+sem transformação silenciosa e podem ser interpretados como fórmula por
+planilhas se começarem por caracteres de fórmula. O cenário de falha de rede
+forçada no Playwright produz a mensagem de recurso abortado do Chromium; sucesso
+e fluxo somente-inválidos não produziram erros de console ou page errors.
+Pendências: Etapa 8 não iniciada; PDF permanece pendente.
+Decisões: backend, Risk Engine, contrato API e regras de classificação não foram
+alterados. Etapa 8 permanece pendente.
 
 ------------------------------------------------------------------------
 

@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react'
-import { ArrowRight, CircleAlert, LoaderCircle, ShieldCheck, Trash2 } from 'lucide-react'
+import { ArrowRight, CircleAlert, Download, LoaderCircle, ShieldCheck, Trash2 } from 'lucide-react'
 import { ResultsSummary } from './components/ResultsSummary.tsx'
 import { SupplierResults } from './components/SupplierResults.tsx'
 import type { AnalysisResponse, RiskFilter, SupplierRow } from './types/analysis.ts'
 import { parseCnpjLines } from './utils/cnpj.ts'
 import { composeSupplierRows, filterSupplierRows, summarizeSupplierRows } from './utils/analysis.ts'
+import { serializeSupplierCsv, supplierCsvFilename } from './utils/csv.ts'
+import type { CnpjEntry } from './utils/cnpj.ts'
 
 const starterInput = [
   '11.222.333/0001-81',
@@ -16,7 +18,7 @@ const starterInput = [
 
 type AnalysisState = {
   rows: SupplierRow[]
-  totalDuplicates: number
+  duplicates: CnpjEntry[]
 }
 
 function App() {
@@ -28,7 +30,7 @@ function App() {
 
   const inputCount = input.split(/\r?\n/).filter((line) => line.trim()).length
   const summary = analysis
-    ? summarizeSupplierRows(analysis.rows, analysis.totalDuplicates)
+    ? summarizeSupplierRows(analysis.rows, analysis.duplicates.length)
     : null
   const visibleRows = analysis
     ? filterSupplierRows(analysis.rows, filter)
@@ -62,7 +64,7 @@ function App() {
       }
 
       const rows = composeSupplierRows(batch, payload)
-      setAnalysis({ rows, totalDuplicates: payload.duplicates.length })
+      setAnalysis({ rows, duplicates: payload.duplicates })
     } catch (error) {
       setRequestError(
         error instanceof Error
@@ -79,6 +81,22 @@ function App() {
     setAnalysis(null)
     setFilter('TODOS')
     setRequestError('')
+  }
+
+  function exportCsv() {
+    if (!analysis || analysis.rows.length === 0 || isLoading) return
+
+    const blob = new Blob([serializeSupplierCsv(analysis.rows, analysis.duplicates)], {
+      type: 'text/csv;charset=utf-8',
+    })
+    const objectUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = objectUrl
+    link.download = supplierCsvFilename()
+    document.body.append(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0)
   }
 
   return (
@@ -192,6 +210,14 @@ function App() {
             {summary && analysis && (
               <>
                 <ResultsSummary summary={summary} />
+                {analysis.rows.length > 0 && !isLoading && (
+                  <div className="export-actions">
+                    <button className="export-button" onClick={exportCsv} type="button">
+                      <Download size={16} aria-hidden="true" />
+                      <span>Exportar CSV</span>
+                    </button>
+                  </div>
+                )}
                 <SupplierResults rows={visibleRows} filter={filter} onFilterChange={setFilter} />
               </>
             )}
