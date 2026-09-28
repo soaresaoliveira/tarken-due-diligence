@@ -1,6 +1,6 @@
 # TARKEN --- CASE DE DUE DILIGENCE DE FORNECEDORES
 
-## MASTER PLAN v0.4
+## MASTER PLAN v0.5
 
 **Status:** Em execução\
 **Última atualização:** 28/09/2026\
@@ -576,7 +576,7 @@ Usuário consegue:
 
 ### Status
 
-`⬜ PENDENTE`
+`🟢 CONCLUÍDA`
 
 ------------------------------------------------------------------------
 
@@ -841,7 +841,7 @@ Não permitido sem alteração formal do plano:
   3 --- Receita       🟢                                    
   4 --- IBAMA         🟢
   5 --- Merge/Risco   🟢
-  6 --- Interface     ⬜                                    
+  6 --- Interface     🟢
   7 --- CSV           ⬜                                    
   8 --- PDF           ⬜                                    
   9 --- Testes        ⬜                                    
@@ -857,6 +857,19 @@ Status permitidos:
 ------------------------------------------------------------------------
 
 # 16. HISTÓRICO DE VERSÕES
+
+## v0.5 --- 28/09/2026
+
+### Fechamento formal da Etapa 6
+
+-   **Versão anterior:** v0.4
+-   **Nova versão:** v0.5
+-   **Data:** 28/09/2026
+-   **Motivo:** registrar a conclusão da interface de resultados após validação.
+-   **Alteração:** atualizar o status da Etapa 6 e registrar implementação e
+  evidências; nenhum escopo ou regra de etapas anteriores/futuras foi alterado.
+-   **Impacto:** baixo; conclusão da apresentação visual, sem mudança de negócio.
+-   **Decisão:** aprovada.
 
 ## v0.4 --- 28/09/2026
 
@@ -1117,6 +1130,34 @@ Pendências: Etapa 6 não iniciada.
 Decisões: manter `SUCCESS`/`ERROR` distintos de `SIM`/`NÃO`/`NA`; cenário de
 aprovação e combinação Autos ERROR + Embargos NÃO confirmados pelos testes
 determinísticos quando não produzidos naturalmente pelos dados públicos. Etapa 6
+permanece pendente.
+
+CHECKPOINT — ETAPA 6
+
+Status: CONCLUÍDA
+Data: 28/09/2026
+Commit: feat: complete results interface
+Implementação: resultados consolidados apresentados na UI com resumo APROVAR,
+REVISAR e RECUSAR; inválidos contabilizados como RECUSAR; duplicados excluídos
+dos totais; filtro somente por classificação; detalhes do fornecedor com
+identificação, Receita, Autos, Áreas Embargadas, decisão, motivo e data.
+Evidências/status: Receita, Autos e Embargos apresentados individualmente;
+`SIM`, `NÃO` e `NA` permanecem distintos de `SUCCESS`, `ERROR` e `NOT_FOUND`.
+Motivos ficam visíveis na lista principal. Testes Playwright confirmaram resumo,
+filtro, detalhes, inválidos, `NOT_FOUND` e preservação de `ERROR`/`NA`.
+Validação visual: desktop 1440x1000 e mobile 390x844; página sem overflow
+horizontal. Console errors=[] e page errors=[].
+Fontes reais: fluxo integrado exibiu Receita `ERROR` por HTTP 403 da BrasilAPI,
+Autos `SUCCESS` + `NÃO` e Embargos `SUCCESS` + `NÃO`; `ERROR` não foi convertido
+em `NOT_FOUND` ou `NÃO`. O HTTP 403 foi comportamento externo observado no
+ambiente de validação, não falha de código.
+Testes realizados: `npm test` — 71/71 aprovados; lint frontend aprovado; builds
+frontend e backend aprovados; `git diff --check` aprovado; Playwright aprovado.
+Resultado: critérios de apresentação da Etapa 6 validados. Backend e Risk Engine
+não foram alterados; regras de negócio e contrato da API foram preservados.
+Pendências: Etapa 7 não iniciada; CSV e PDF permanecem nas etapas seguintes.
+Decisões: totais calculados a partir de `results + invalid`, com duplicados fora;
+classificação consumida do backend, sem regra de risco no frontend. Etapa 7
 permanece pendente.
 
 ------------------------------------------------------------------------

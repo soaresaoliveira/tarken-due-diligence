@@ -1,37 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import {
-  ArrowRight,
-  BadgeCheck,
-  CircleAlert,
-  ClipboardList,
-  LoaderCircle,
-  ShieldCheck,
-  Sparkles,
-  Trash2,
-} from 'lucide-react'
-import { parseCnpjLines, type CnpjBatch } from './utils/cnpj.ts'
-
-type IbamaStatus = 'SUCCESS' | 'ERROR'
-type IbamaEvidence = 'SIM' | 'NÃO' | 'NA'
-type SourceStatus = IbamaStatus | 'NOT_SENT' | 'PENDING'
-
-type IbamaResult = {
-  cnpj: string
-  ibama_auto_infracao: IbamaEvidence
-  status_ibama_auto: IbamaStatus
-  error_ibama_auto?: string
-  ibama_embargo: IbamaEvidence
-  status_ibama_embargo: IbamaStatus
-  error_ibama_embargo?: string
-  resultado_ambiental: IbamaEvidence
-}
-
-const sourceStatusLabels: Record<SourceStatus, string> = {
-  SUCCESS: 'SUCCESS',
-  ERROR: 'ERROR',
-  NOT_SENT: 'NÃO ENVIADO',
-  PENDING: 'AGUARDANDO',
-}
+import { ArrowRight, CircleAlert, LoaderCircle, ShieldCheck, Trash2 } from 'lucide-react'
+import { ResultsSummary } from './components/ResultsSummary.tsx'
+import { SupplierResults } from './components/SupplierResults.tsx'
+import type { AnalysisResponse, RiskFilter, SupplierRow } from './types/analysis.ts'
+import { parseCnpjLines } from './utils/cnpj.ts'
+import { composeSupplierRows, filterSupplierRows, summarizeSupplierRows } from './utils/analysis.ts'
 
 const starterInput = [
   '11.222.333/0001-81',
@@ -41,47 +14,60 @@ const starterInput = [
   'texto sem números',
 ].join('\n')
 
+type AnalysisState = {
+  rows: SupplierRow[]
+  totalDuplicates: number
+}
+
 function App() {
   const [input, setInput] = useState(starterInput)
-  const [batch, setBatch] = useState<CnpjBatch | null>(null)
-  const [ibamaResults, setIbamaResults] = useState<IbamaResult[]>([])
+  const [analysis, setAnalysis] = useState<AnalysisState | null>(null)
+  const [filter, setFilter] = useState<RiskFilter>('TODOS')
   const [isLoading, setIsLoading] = useState(false)
   const [requestError, setRequestError] = useState('')
 
   const inputCount = input.split(/\r?\n/).filter((line) => line.trim()).length
-  const ibamaByCnpj = new Map(ibamaResults.map((result) => [result.cnpj, result]))
+  const summary = analysis
+    ? summarizeSupplierRows(analysis.rows, analysis.totalDuplicates)
+    : null
+  const visibleRows = analysis
+    ? filterSupplierRows(analysis.rows, filter)
+    : []
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const parsed = parseCnpjLines(input)
-    setBatch(parsed)
-    setIbamaResults([])
+    const batch = parseCnpjLines(input)
+    setAnalysis(null)
+    setFilter('TODOS')
     setRequestError('')
 
-    if (parsed.valid.length === 0) return
+    if (batch.entries.length === 0) return
 
     setIsLoading(true)
     try {
       const response = await fetch('/api/ibama/cnpjs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cnpjs: parsed.valid.map((entry) => entry.cnpj) }),
+        body: JSON.stringify({ cnpjs: batch.entries.map((entry) => entry.original) }),
       })
-      const payload = (await response.json()) as {
-        results?: IbamaResult[]
-        error?: string
+      const payload = await response.json() as AnalysisResponse
+
+      if (
+        !response.ok ||
+        !Array.isArray(payload.results) ||
+        !Array.isArray(payload.invalid) ||
+        !Array.isArray(payload.duplicates)
+      ) {
+        throw new Error(payload.error ?? 'A resposta do backend não contém todos os resultados esperados.')
       }
 
-      if (!response.ok || !Array.isArray(payload.results)) {
-        throw new Error(payload.error ?? 'O backend IBAMA retornou uma resposta inesperada.')
-      }
-
-      setIbamaResults(payload.results)
+      const rows = composeSupplierRows(batch, payload)
+      setAnalysis({ rows, totalDuplicates: payload.duplicates.length })
     } catch (error) {
       setRequestError(
         error instanceof Error
           ? error.message
-          : 'Não foi possível consultar o backend IBAMA.',
+          : 'Não foi possível concluir a consulta. Tente novamente.',
       )
     } finally {
       setIsLoading(false)
@@ -90,8 +76,8 @@ function App() {
 
   function clearInput() {
     setInput('')
-    setBatch(null)
-    setIbamaResults([])
+    setAnalysis(null)
+    setFilter('TODOS')
     setRequestError('')
   }
 
@@ -107,7 +93,7 @@ function App() {
           </a>
           <div className="environment-tag">
             <span className="environment-tag__dot" />
-            <span>Etapa 4 · IBAMA</span>
+            <span>PROCUREMENT</span>
           </div>
         </div>
       </header>
@@ -115,48 +101,35 @@ function App() {
       <main className="main-content" id="inicio">
         <section className="page-heading" aria-labelledby="page-title">
           <div>
-            <p className="eyebrow"><span>04</span> / CONSULTA AMBIENTAL</p>
-            <h1 id="page-title">Evidências do IBAMA</h1>
+            <p className="eyebrow"><span>ANÁLISE</span> / FORNECEDORES</p>
+            <h1 id="page-title">Due Diligence de Fornecedores</h1>
             <p className="page-heading__description">
-              Consulte Autos de Infração e Áreas Embargadas por CNPJ.
+              Informações cadastrais e ambientais consolidadas para apoiar a análise de Procurement.
             </p>
           </div>
-          <div className="heading-stamp" aria-label="Protótipo visual">
-            <span className="heading-stamp__icon"><BadgeCheck size={16} /></span>
-            <span>Fontes independentes</span>
-          </div>
         </section>
-
-        <aside className="demo-banner" aria-label="Aviso sobre dados demonstrativos">
-          <span className="demo-banner__icon"><Sparkles size={17} /></span>
-          <p>
-            <strong>Processamento no backend.</strong> Os datasets não são enviados ao
-            navegador; somente evidências e status por CNPJ são retornados.
-          </p>
-          <span className="demo-banner__tag">API</span>
-        </aside>
 
         <div className="analysis-layout">
           <section className="input-panel" aria-labelledby="input-title">
             <div className="panel-kicker"><span>01</span><span>ENTRADA</span></div>
             <div className="input-panel__heading">
-              <h2 id="input-title">Lista de CNPJs</h2>
-              <p>Insira um CNPJ por linha; a validação local filtra a consulta.</p>
+              <h2 id="input-title">CNPJs para análise</h2>
+              <p>Um CNPJ por linha; máscara opcional.</p>
             </div>
 
             <form onSubmit={handleSubmit}>
               <label className="field-label" htmlFor="cnpj-list">
-                CNPJs para análise
+                Lista de fornecedores
                 <span>{inputCount} {inputCount === 1 ? 'informado' : 'informados'}</span>
               </label>
               <textarea
                 id="cnpj-list"
                 name="cnpjs"
                 value={input}
+                disabled={isLoading}
                 onChange={(event) => {
                   setInput(event.target.value)
-                  setBatch(null)
-                  setIbamaResults([])
+                  setAnalysis(null)
                   setRequestError('')
                 }}
                 rows={7}
@@ -165,13 +138,13 @@ function App() {
               />
               <div className="input-actions">
                 <span className="input-note" id="input-note">
-                  Máscara opcional; pontuação é removida e linhas vazias ignoradas.
+                  Linhas vazias são ignoradas; duplicidades são consolidadas.
                 </span>
                 <button
                   className="clear-button"
                   type="button"
                   onClick={clearInput}
-                  disabled={!input}
+                  disabled={!input || isLoading}
                   title="Limpar lista"
                   aria-label="Limpar lista de CNPJs"
                 >
@@ -184,143 +157,57 @@ function App() {
                 ) : (
                   <ArrowRight size={17} aria-hidden="true" />
                 )}
-                <span>{isLoading ? 'Consultando IBAMA' : 'Consultar fontes IBAMA'}</span>
+                <span>{isLoading ? 'Consultando fontes' : 'Analisar fornecedores'}</span>
               </button>
             </form>
             <p className="input-panel__footnote">
               <CircleAlert size={14} />
-              Apenas CNPJs válidos e únicos são enviados pelo backend às duas fontes.
+              CNPJs inválidos são avaliados sem consulta às fontes externas.
             </p>
           </section>
 
-          <section className="results-panel" aria-labelledby="results-title" aria-live="polite">
+          <section className="results-panel" aria-labelledby="analysis-title" aria-busy={isLoading}>
             <div className="results-heading">
               <div>
-                <div className="panel-kicker"><span>02</span><span>RESULTADOS</span></div>
-                <h2 id="results-title">Resultado das fontes</h2>
+                <div className="panel-kicker"><span>02</span><span>ANÁLISE</span></div>
+                <h2 id="analysis-title">Resultado consolidado</h2>
               </div>
-              {batch && (
-                <div className="result-count">{batch.informedCount} {batch.informedCount === 1 ? 'entrada avaliada' : 'entradas avaliadas'}</div>
-              )}
             </div>
 
-            {requestError && (
-              <div className="error-message" role="alert">
-                <strong>Status das fontes: ERROR.</strong> {requestError}. Nenhuma ausência de evidência foi presumida.
+            {isLoading && (
+              <div className="loading-state" role="status" aria-live="polite">
+                <LoaderCircle className="spin" size={18} aria-hidden="true" />
+                <span>Consultando Receita e fontes IBAMA…</span>
               </div>
             )}
 
-            {batch && batch.entries.length > 0 ? (
+            {requestError && (
+              <div className="error-message" role="alert">
+                <strong>Não foi possível concluir a consulta.</strong>
+                <span>{requestError}</span>
+                <span>Os resultados das fontes não foram presumidos.</span>
+              </div>
+            )}
+
+            {summary && analysis && (
               <>
-                <div className="summary-strip" aria-label="Resumo da consulta">
-                  <div className="summary-item summary-item--total">
-                    <span className="summary-item__label">Informados</span>
-                    <strong>{batch.informedCount.toString().padStart(2, '0')}</strong>
-                  </div>
-                  <div className="summary-item summary-item--approve">
-                    <span className="summary-item__label">Válidos</span>
-                    <strong>{batch.valid.length.toString().padStart(2, '0')}</strong>
-                  </div>
-                  <div className="summary-item summary-item--review">
-                    <span className="summary-item__label">Inválidos</span>
-                    <strong>{batch.invalid.length.toString().padStart(2, '0')}</strong>
-                  </div>
-                  <div className="summary-item summary-item--refuse">
-                    <span className="summary-item__label">Duplicados removidos</span>
-                    <strong>{batch.duplicates.length.toString().padStart(2, '0')}</strong>
-                  </div>
-                </div>
-
-                <div className="table-frame">
-                  <table>
-                    <caption className="visually-hidden">Resultados e status independentes das duas fontes IBAMA</caption>
-                    <thead>
-                      <tr>
-                        <th scope="col">CNPJ / entrada</th>
-                        <th scope="col">Validação</th>
-                        <th scope="col">Autos</th>
-                        <th scope="col">Status Autos</th>
-                        <th scope="col">Embargos</th>
-                        <th scope="col">Status Embargos</th>
-                        <th scope="col">Ambiental</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {batch.entries.map((entry, index) => {
-                        const result = entry.status === 'valid'
-                          ? ibamaByCnpj.get(entry.cnpj)
-                          : undefined
-                        const autoStatus: SourceStatus =
-                          entry.status !== 'valid'
-                            ? 'NOT_SENT'
-                            : result?.status_ibama_auto ?? (requestError ? 'ERROR' : 'PENDING')
-                        const embargoStatus: SourceStatus =
-                          entry.status !== 'valid'
-                            ? 'NOT_SENT'
-                            : result?.status_ibama_embargo ?? (requestError ? 'ERROR' : 'PENDING')
-                        const autoResult = result?.ibama_auto_infracao ??
-                          (requestError && entry.status === 'valid' ? 'NA' : '—')
-                        const embargoResult = result?.ibama_embargo ??
-                          (requestError && entry.status === 'valid' ? 'NA' : '—')
-                        const environmentalResult = result?.resultado_ambiental ??
-                          (requestError && entry.status === 'valid' ? 'NA' : '—')
-
-                        return (
-                          <tr className="result-row" key={`${entry.cnpj}-${index}`}>
-                            <td className="original-cell">
-                              <strong>{entry.cnpj || '—'}</strong>
-                              <small>{entry.original}</small>
-                            </td>
-                            <td>
-                              <span className={`validation-badge validation-badge--${entry.status}`}>
-                                {entry.status === 'valid' && <BadgeCheck size={13} />}
-                                {entry.status === 'invalid' && <CircleAlert size={13} />}
-                                {entry.status === 'duplicate' && <ClipboardList size={13} />}
-                                {entry.status === 'valid' ? 'VÁLIDO' : entry.status === 'invalid' ? 'INVÁLIDO' : 'DUPLICADO'}
-                              </span>
-                              {entry.reason && <small className="entry-reason">{entry.reason}</small>}
-                            </td>
-                            <td><span className={`evidence-badge evidence-badge--${autoResult === '—' ? 'empty' : autoResult === 'NÃO' ? 'nao' : autoResult.toLowerCase()}`}>{autoResult}</span></td>
-                            <td>
-                              <span className={`source-badge source-badge--${autoStatus.toLowerCase()}`}>
-                                {sourceStatusLabels[autoStatus]}
-                              </span>
-                              {result?.error_ibama_auto && <small className="source-error">{result.error_ibama_auto}</small>}
-                              {requestError && entry.status === 'valid' && <small className="source-error">{requestError}</small>}
-                            </td>
-                            <td><span className={`evidence-badge evidence-badge--${embargoResult === '—' ? 'empty' : embargoResult === 'NÃO' ? 'nao' : embargoResult.toLowerCase()}`}>{embargoResult}</span></td>
-                            <td>
-                              <span className={`source-badge source-badge--${embargoStatus.toLowerCase()}`}>
-                                {sourceStatusLabels[embargoStatus]}
-                              </span>
-                              {result?.error_ibama_embargo && <small className="source-error">{result.error_ibama_embargo}</small>}
-                              {requestError && entry.status === 'valid' && <small className="source-error">{requestError}</small>}
-                            </td>
-                            <td><span className={`evidence-badge evidence-badge--${environmentalResult === '—' ? 'empty' : environmentalResult === 'NÃO' ? 'nao' : environmentalResult.toLowerCase()}`}>{environmentalResult}</span></td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <p className="results-footnote">
-                  <ShieldCheck size={14} />
-                  Status técnicos permanecem separados de SIM, NÃO e NA; não há classificação de risco nesta etapa.
-                </p>
+                <ResultsSummary summary={summary} />
+                <SupplierResults rows={visibleRows} filter={filter} onFilterChange={setFilter} />
               </>
-            ) : (
+            )}
+
+            {!summary && !isLoading && !requestError && (
               <div className="empty-state">
-                <div className="empty-state__icon"><ClipboardList size={22} /></div>
-                <h3>As evidências aparecerão aqui</h3>
-                <p>Valide a lista para consultar as duas fontes ambientais pelo backend.</p>
+                <h3>A análise aparecerá aqui</h3>
+                <p>Informe os CNPJs para consultar as fontes e visualizar a classificação consolidada.</p>
               </div>
             )}
           </section>
         </div>
 
         <footer className="page-footer">
-          <span>TARKEN <span className="footer-dot">·</span> CASE DE DUE DILIGENCE</span>
-          <span>Autos + Embargos <span className="footer-dot">·</span> sem Risk Engine</span>
+          <span>TARKEN <span className="footer-dot">·</span> DUE DILIGENCE DE FORNECEDORES</span>
+          <span>Receita <span className="footer-dot">·</span> IBAMA</span>
         </footer>
       </main>
     </div>
