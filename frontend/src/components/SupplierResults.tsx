@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BadgeCheck, ChevronDown, CircleAlert, CircleX, TriangleAlert } from 'lucide-react'
+import { BadgeCheck, Check, ChevronDown, ChevronUp, CircleAlert, CircleHelp, CircleX, TriangleAlert } from 'lucide-react'
 import type {
   ConsolidatedResult,
   Evidence,
@@ -57,34 +57,70 @@ function RiskBadge({ value }: { value: RiskClassification }) {
 }
 
 function EvidenceBadge({ value }: { value: Evidence }) {
-  return <span className={`evidence-badge evidence-badge--${value === 'NÃO' ? 'nao' : value.toLowerCase()}`}>{value}</span>
+  return <span className="detail-evidence-value">{value}</span>
 }
 
-function ReceitaStatusBadge({ value }: { value: ReceitaStatus }) {
-  const label = value === 'NOT_FOUND' ? 'NOT_FOUND' : value
-  return <span className={`source-badge source-badge--${value.toLowerCase()}`}>{label}</span>
+function TechnicalStatus({ value }: { value: ReceitaStatus | IbamaStatus }) {
+  return <span className={`technical-status technical-status--${value.toLowerCase()}`}>{value}</span>
 }
 
-function IbamaSource({
-  evidence,
+function SourceOutcome({
+  result,
   status,
   error,
 }: {
-  evidence: Evidence
-  status: IbamaStatus
+  result: string
+  status?: ReceitaStatus | IbamaStatus
   error?: string
 }) {
+  if (status === 'ERROR') {
+    return (
+      <span className="source-outcome source-outcome--error" title={error ?? 'Erro na consulta'} aria-label={`ERROR${result === 'NA' ? ', resultado NA' : ''}`}>
+        <CircleAlert size={12} aria-hidden="true" />
+        <span>ERROR</span>
+        {result === 'NA' && <small>NA</small>}
+      </span>
+    )
+  }
+
+  if (status === 'NOT_FOUND') {
+    return <span className="source-outcome source-outcome--warning"><CircleAlert size={12} aria-hidden="true" /><span>NOT_FOUND</span></span>
+  }
+
+  if (result === 'NA') {
+    return <span className="source-outcome source-outcome--unknown"><CircleHelp size={12} aria-hidden="true" /><span>NA</span></span>
+  }
+
   return (
-    <div className="source-result">
-      <EvidenceBadge value={evidence} />
-      <span className={`source-badge source-badge--${status.toLowerCase()}`}>{status}</span>
-      {error && <small className="source-error">{error}</small>}
-    </div>
+    <span className="source-outcome source-outcome--success" title={status === 'SUCCESS' ? 'Consulta SUCCESS' : undefined}>
+      <Check size={12} aria-hidden="true" />
+      <span>{result}</span>
+    </span>
   )
 }
 
 function NotConsulted() {
   return <span className="not-consulted">Não consultada</span>
+}
+
+function IbamaSource({ evidence, status, error }: { evidence: Evidence; status: IbamaStatus; error?: string }) {
+  return (
+    <div className="detail-source-data">
+      <div className="detail-source-line"><span>Resultado</span><EvidenceBadge value={evidence} /></div>
+      <div className="detail-source-line"><span>Status da consulta</span><TechnicalStatus value={status} /></div>
+      {error && <p className="source-error detail-error"><CircleAlert size={13} />{error}</p>}
+    </div>
+  )
+}
+
+function ReceitaSource({ status, situation, error }: { status: ReceitaStatus; situation: string | null; error?: string }) {
+  return (
+    <div className="detail-source-data">
+      <div className="detail-source-line"><span>Status da consulta</span><TechnicalStatus value={status} /></div>
+      {status === 'SUCCESS' && situation && <div className="detail-source-line"><span>Situação cadastral</span><span>{situation}</span></div>}
+      {error && <p className="source-error detail-error"><CircleAlert size={13} />{error}</p>}
+    </div>
+  )
 }
 
 function DetailField({ label, value }: { label: string; value: string | null | undefined }) {
@@ -118,13 +154,7 @@ function SupplierDetails({ row }: { row: SupplierRow }) {
       <section className="detail-section">
         <h3>Receita Federal</h3>
         {result ? (
-          <>
-            <div className="detail-status-line">
-              <ReceitaStatusBadge value={result.status_receita} />
-              {result.status_receita === 'SUCCESS' && result.situacao_cadastral && <span>{result.situacao_cadastral}</span>}
-            </div>
-            {result.error && <p className="source-error detail-error"><CircleAlert size={14} />{result.error}</p>}
-          </>
+          <ReceitaSource status={result.status_receita} situation={result.situacao_cadastral} error={result.error} />
         ) : <p className="detail-muted">Não consultada: CNPJ inválido.</p>}
       </section>
 
@@ -182,7 +212,7 @@ export function SupplierResults({ rows, filter, onFilterChange }: SupplierResult
         type="button"
       >
         <span>{isExpanded ? 'Fechar' : 'Detalhes'}</span>
-        <ChevronDown size={15} aria-hidden="true" />
+        {isExpanded ? <ChevronUp size={13} aria-hidden="true" /> : <ChevronDown size={13} aria-hidden="true" />}
       </button>
     )
   }
@@ -229,9 +259,9 @@ export function SupplierResults({ rows, filter, onFilterChange }: SupplierResult
                   <th scope="col">Fornecedor</th>
                   <th scope="col">Receita</th>
                   <th scope="col">Autos</th>
-                  <th scope="col">Áreas embargadas</th>
+                  <th scope="col">Embargos</th>
                   <th scope="col">Ambiental</th>
-                  <th scope="col">Classificação e motivo</th>
+                  <th scope="col">Risco</th>
                   <th scope="col"><span className="visually-hidden">Detalhes</span></th>
                 </tr>
               </thead>
@@ -280,10 +310,19 @@ function FragmentRow({
     <>
       <tr className="supplier-row">
         <td><SupplierIdentity row={row} /></td>
-        <td>{row.result ? <><ReceitaStatusBadge value={row.result.status_receita} /><small className="table-subtext">{row.result.situacao_cadastral || 'Situação não informada'}</small></> : <NotConsulted />}</td>
-        <td>{row.result ? <IbamaSource evidence={row.result.ibama_auto_infracao} status={row.result.status_ibama_auto} /> : <NotConsulted />}</td>
-        <td>{row.result ? <IbamaSource evidence={row.result.ibama_embargo} status={row.result.status_ibama_embargo} /> : <NotConsulted />}</td>
-        <td>{row.result ? <EvidenceBadge value={row.result.resultado_ambiental} /> : <NotConsulted />}</td>
+        <td>{row.result
+          ? <SourceOutcome result={row.result.situacao_cadastral || 'NA'} status={row.result.status_receita} error={row.result.error} />
+          : <span className="source-outcome source-outcome--invalid"><CircleAlert size={12} aria-hidden="true" /><span>CNPJ inválido</span></span>}
+        </td>
+        <td>{row.result
+          ? <SourceOutcome result={row.result.ibama_auto_infracao} status={row.result.status_ibama_auto} error={row.result.error_ibama_auto} />
+          : <NotConsulted />}
+        </td>
+        <td>{row.result
+          ? <SourceOutcome result={row.result.ibama_embargo} status={row.result.status_ibama_embargo} error={row.result.error_ibama_embargo} />
+          : <NotConsulted />}
+        </td>
+        <td>{row.result ? <SourceOutcome result={row.result.resultado_ambiental} /> : <NotConsulted />}</td>
         <td><RiskBadge value={row.classificacao_risco} /><p className="reason-cell">{row.motivo_classificacao}</p></td>
         <td>{detailsButton(row)}</td>
       </tr>
@@ -296,7 +335,9 @@ function CompactSource({ label, row }: { label: string; row: SupplierRow }) {
   return (
     <div className="compact-source">
       <span>{label}</span>
-      {row.result ? <ReceitaStatusBadge value={row.result.status_receita} /> : <NotConsulted />}
+      {row.result
+        ? <SourceOutcome result={row.result.situacao_cadastral || 'NA'} status={row.result.status_receita} error={row.result.error} />
+        : <span className="source-outcome source-outcome--invalid"><CircleAlert size={12} aria-hidden="true" /><span>CNPJ inválido</span></span>}
     </div>
   )
 }
@@ -305,7 +346,7 @@ function CompactIbama({ label, evidence, status }: { label: string; evidence?: E
   return (
     <div className="compact-source">
       <span>{label}</span>
-      {evidence && status ? <><EvidenceBadge value={evidence} /><span className={`source-badge source-badge--${status.toLowerCase()}`}>{status}</span></> : <NotConsulted />}
+      {evidence && status ? <SourceOutcome result={evidence} status={status} /> : <NotConsulted />}
     </div>
   )
 }

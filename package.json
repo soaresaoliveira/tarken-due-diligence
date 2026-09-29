@@ -9,11 +9,14 @@
   "scripts": {
     "dev": "concurrently -k --names api,web \"npm run dev --workspace @tarken/api\" \"npm run dev --workspace @tarken/web\"",
     "build": "npm run build --workspace @tarken/web && npm run build --workspace @tarken/api",
-    "test": "tsx --test frontend/src/utils/cnpj.test.ts frontend/src/utils/analysis.test.ts frontend/src/utils/csv.test.ts backend/test/*.test.ts",
+    "test": "tsx --test frontend/src/utils/cnpj.test.ts frontend/src/utils/analysis.test.ts frontend/src/utils/csv.test.ts frontend/src/utils/pdf.test.ts backend/test/*.test.ts",
     "test:e2e": "playwright test --config=playwright.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "concurrently": "^9.2.1"
+  },
+  "dependencies": {
+    "pdfmake": "^0.3.11"
   }
 }

@@ -1,5 +1,6 @@
 import type { ReceitaResult, ReceitaStatus } from './brasilapi.js'
 import type { IbamaEvidence, IbamaResult } from './ibama.js'
+import { DEFAULT_RISK_CRITERIA, type RiskCriteria } from '../../shared/risk-engine.js'
 import { classifyRisk } from './risk-engine.js'
 
 export type ConsolidatedResult = Omit<ReceitaResult, 'status'> & Omit<IbamaResult, 'cnpj'> & {
@@ -15,6 +16,7 @@ export function mergeResults(
   receitaResults: ReceitaResult[],
   ibamaResults: IbamaResult[],
   dataConsulta = new Date().toISOString(),
+  riskCriteria: RiskCriteria = DEFAULT_RISK_CRITERIA,
 ): ConsolidatedResult[] {
   const receitaByCnpj = new Map(receitaResults.map((result) => [result.cnpj, result]))
   const ibamaByCnpj = new Map(ibamaResults.map((result) => [result.cnpj, result]))
@@ -32,9 +34,11 @@ export function mergeResults(
       cnpj,
       status_receita,
       situacao_cadastral: receita.situacao_cadastral,
+      ibama_auto_infracao: ibama.ibama_auto_infracao,
+      status_ibama_auto: ibama.status_ibama_auto,
       status_ibama_embargo: ibama.status_ibama_embargo,
       ibama_embargo: tem_embargo_ibama,
-    })
+    }, riskCriteria)
 
     return {
       ...receitaData,

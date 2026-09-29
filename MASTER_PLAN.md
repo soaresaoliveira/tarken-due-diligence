@@ -1,9 +1,9 @@
 # TARKEN --- CASE DE DUE DILIGENCE DE FORNECEDORES
 
-## MASTER PLAN v0.8
+## MASTER PLAN v0.15
 
 **Status:** Em execução\
-**Última atualização:** 28/09/2026\
+**Última atualização:** 29/09/2026\
 **Responsável:** Gabriel\
 **Objetivo:** Construir o case técnico solicitado pela Tarken, com
 escopo enxuto, foco em integração de fontes públicas, consolidação de
@@ -681,36 +681,61 @@ Produzir versão curada para leitura humana.
 ### CHECKPOINT — ETAPA 8
 
 Status: CONCLUÍDA
-Data: 28/09/2026
-Commit: não realizado nesta validação.
-Testes realizados: suíte geral 90/90; PDF e CSV 16/16; testes backend
-relevantes 53/53; E2E 7/7 em 13,1 s; lint frontend aprovado; builds frontend e
-backend aprovados; `git diff --check` aprovado.
-Geração: PDFs curto e longo gerados pelos controles de exportação da aplicação.
-O curto tem 3 páginas; o longo tem 45 páginas e foi gerado usando os 48 CNPJs
-iniciais do App. Para evitar consulta em lote às fontes, o cenário de 48 usou
-resposta de API determinística de teste. PDF curto e longo preservados em
-`artifacts/etapa8-visual-review/`. CSV de comparação gerado em
-`artifacts/etapa8-visual-review/etapa8-cenario-48.csv`.
+Data: 29/09/2026
+Commit: não realizado.
+Implementação: PDF consolidado em A4 landscape, com uma tabela de seis colunas
+(CNPJ, Razão Social, Situação Cadastral, Telefone, Embargo e Classificação de
+Risco). A coluna Embargo usa exclusivamente `tem_embargo_ibama`; não há páginas
+individuais por fornecedor.
+Geração: PDFs curto e longo gerados pelo fluxo da aplicação. O curto tem 1
+página. O longo usa os 48 CNPJs iniciais do App e tem 48 registros em 3 páginas.
+O cenário contém 47 CNPJs válidos, 1 inválido e nenhuma duplicidade; foi usado
+um fixture local de API para evitar consultas em lote. PDFs preservados em
+`artifacts/etapa8-visual-review/`.
 Consistência: a tela apresentou 48 fornecedores: 16 APROVAR, 16 REVISAR e
-16 RECUSAR; 1 CNPJ inválido e nenhuma duplicidade. O CSV contém 48 registros
-com as mesmas classificações. Com o filtro REVISAR ativo, a tela mostrou 16
-registros; o CSV manteve o conjunto completo. O PDF foi gerado no mesmo estado
-de filtro e recebe o conjunto completo de resultados da análise, não apenas as
-linhas visíveis.
-BrasilAPI: User-Agent `Tarken-Due-Diligence/1.0` configurado; teste específico
-incluído entre os 13/13 testes BrasilAPI aprovados. Uma consulta real pontual
-retornou `SUCCESS`/`ATIVA`; nenhuma consulta em lote foi feita nesta validação.
-Observação do build: frontend aprovado com alerta de chunks acima de 500 kB
-associado aos bundles PDF/fontes; registrado como observação, não como falha.
-Limitação visual: não foi possível realizar validação visual automatizada dos
-PDFs porque não havia renderizador/visualizador PDF disponível no ambiente.
-Nenhuma ferramenta foi instalada. Portanto, legibilidade e ausência de cortes
-não foram visualmente comprovadas. Os PDFs foram preservados para inspeção
-manual posterior.
-Resultado: implementação testada; geração multipágina validada; consistência
-tela/CSV validada. A validação visual permanece limitada pela ausência de
-ferramenta no ambiente e não é declarada como realizada.
+16 RECUSAR. O CSV contém 48 registros com as mesmas classificações. Com o
+filtro REVISAR ativo, a tela mostrou 16 registros e as exportações mantiveram o
+conjunto completo. O CSV foi exportado em memória para comparação; não houve
+alteração do código ou do contrato CSV.
+Casos representados: CNPJ inválido, situações INAPTA e BAIXADA e embargo
+confirmado. Testes unitários confirmam a tabela única, seis colunas, ordem,
+classificação recebida, mapeamento de `tem_embargo_ibama`, cabeçalho repetível e
+rodapé paginado.
+Testes realizados: `npm test` — 87/87 aprovados; E2E CSV/PDF — 7/7 aprovados em
+12,0 s; lint frontend, builds frontend e backend e `git diff --check` aprovados.
+Limitação visual: validação visual NÃO DISPONÍVEL. O ambiente não tinha
+renderizador/visualizador PDF; o Chromium iniciou um download em vez de
+renderizar. Nenhuma ferramenta foi instalada e não houve inspeção visual.
+Legibilidade e ausência de cortes não foram visualmente comprovadas.
+Observação do build: alerta de chunks acima de 500 kB associado aos bundles
+PDF/fontes; não bloqueou o build.
+Resultado: implementação automatizada aprovada; geração consolidada e
+multipágina validada estruturalmente; consistência tela/CSV validada. A
+limitação de validação visual permanece registrada, sem afirmar inspeção visual.
+
+### Evidência de execução real ponta a ponta
+
+Data: 29/09/2026
+Execução: análise feita pela interface da aplicação, sem interceptação ou
+fixtures; o frontend usou o backend real já ativo. As consultas foram feitas às
+três fontes públicas para os CNPJs abaixo.
+
+| CNPJ | Razão Social | BrasilAPI | IBAMA Autos | IBAMA Embargos | Classificação |
+| --- | --- | --- | --- | --- | --- |
+| 84046101000193 | BUNGE ALIMENTOS S/A | SUCCESS / ATIVA | SUCCESS / SIM | SUCCESS / NÃO | APROVAR |
+| 60498706000157 | CARGILL AGRICOLA S A | SUCCESS / ATIVA | SUCCESS / SIM | SUCCESS / NÃO | APROVAR |
+| 01838723000127 | BRF S.A. | SUCCESS / ATIVA | SUCCESS / SIM | SUCCESS / SIM | REVISAR |
+
+Resultado na tela: 3 fornecedores; 2 APROVAR e 1 REVISAR. Todos os resultados
+das consultas reais chegaram à resposta consolidada e à tela.
+Downloads: CSV `due-diligence-fornecedores-2026-09-29.csv` e PDF
+`due-diligence-fornecedores-2026-09-29.pdf` baixados pela interface. O CSV foi
+lido e confirmou os três CNPJs e respectivos status/classificações. O PDF foi
+lido e confirmou os três CNPJs, razões sociais, cabeçalhos, classificações e
+Embargo Não/Não/Sim.
+Arquivos: downloads salvos temporariamente em `/tmp`; não fazem parte da
+entrega do repositório. Nenhum arquivo do projeto foi alterado durante essa
+execução real.
 
 ------------------------------------------------------------------------
 
@@ -911,7 +936,7 @@ Não permitido sem alteração formal do plano:
   5 --- Merge/Risco   🟢
   6 --- Interface     🟢
   7 --- CSV           🟢
-  8 --- PDF           ⬜                                    
+  8 --- PDF           🟢
   9 --- Testes        ⬜                                    
   10 --- Entrega      ⬜                                    
 
@@ -925,6 +950,222 @@ Status permitidos:
 ------------------------------------------------------------------------
 
 # 16. HISTÓRICO DE VERSÕES
+
+## v0.15 --- 29/09/2026
+
+### Distinção de CNPJ/Receita e validação do Recalcular
+
+-   **Versão anterior:** v0.14
+-   **Nova versão:** v0.15
+-   **Data:** 29/09/2026
+-   **Motivo:** registrar a investigação e cobertura da distinção entre CNPJ
+  estruturalmente inválido e Receita `NOT_FOUND`, além da verificação do
+  recálculo local com critérios atuais.
+-   **Alteração:** checkpoint registra que a avaliação estrutural usa
+  `validateNormalizedCnpj`, separada de `status_receita === NOT_FOUND`; `NA` e
+  `ERROR` não são tratados como não encontrado. Matriz unitária cobre os estados
+  e a prioridade RECUSAR > REVISAR > APROVAR. A revisão do handler confirmou uso
+  dos critérios atuais em operação local; não se reproduziu estado stale nem
+  chamada de fonte no Recalcular, portanto sua função não foi reescrita. E2E e
+  validação real registram recálculo sem novo POST e preservação dos detalhes.
+-   **Impacto:** baixo; ajuste focal no classificador compartilhado/contrato de
+  critérios e cobertura, sem mudança nas APIs externas ou na coleta.
+-   **Decisão:** aprovada.
+
+### CHECKPOINT — DISTINÇÃO CNPJ/RECEITA E RECALCULAR
+
+Status: CONCLUÍDO
+Data: 29/09/2026
+Commit: não realizado.
+Investigação CNPJ: estruturalmente inválido é determinado exclusivamente por
+`validateNormalizedCnpj(input.cnpj)` e controlado por `rejectInvalidCnpj`;
+Receita não encontrado é determinado exclusivamente por
+`status_receita === NOT_FOUND` e controlado por `rejectReceitaNotFound`. `ERROR`
+e `NA` da Receita continuam distintos de `NOT_FOUND`. O modelo/backend já
+preservavam essa distinção; o risco era a cobertura insuficiente da interação
+entre critérios configuráveis, estado estrutural e estado da Receita.
+Investigação Recalcular: o handler já usava o estado React atual de critérios e
+chamava somente `reclassifySupplierRows` sobre resultados armazenados. Não foi
+reproduzido uso de estado stale nem chamada HTTP; a correção do fluxo não exigiu
+reescrever o botão. A configuração também é enviada em Analyze e a rota executa
+as consultas antes de aplicar o classificador.
+Implementação/testes: `RiskInput` compartilhado conserva CNPJ e status da Receita
+como sinais independentes; critérios configurados alimentam o avaliador puro.
+Testes incluem CNPJ inválido com critério ligado/desligado, `NOT_FOUND` ligado/
+desligado, Receita SUCCESS/ERROR/NA, prioridade junto a Auto SIM e execução de
+Receita/IBAMA com todos os critérios desativados.
+Testes realizados: `npm test` — 98/98 aprovados; E2E — 10/10 aprovados; lint
+frontend, builds frontend/backend e `git diff --check` aprovados.
+Validação real: BUNGE ALIMENTOS S/A (`84046101000193`) retornou Receita
+SUCCESS/ATIVA, Autos SUCCESS/SIM e Embargos SUCCESS/NÃO. Analyze resultou em
+REVISAR; desativar Autos não recalculou imediatamente; Recalcular mudou para
+APROVAR; reativar Autos e recalcular retornou a REVISAR. A contagem permaneceu
+em um POST de análise e os dados SIM/SUCCESS de Autos continuaram nos detalhes.
+Resultado: CNPJ estrutural inválido e não encontrado na Receita tratados como
+condições independentes; `ERROR`/`NA` não viram `NOT_FOUND`; Recalcular local
+aplica os critérios atuais sem nova consulta. Prioridade preservada.
+Limitação: quando `reviewUndetermined` está desativado, `ERROR`/`NA` não acionam
+REVISAR apenas por indeterminação, conforme critério configurável opcional.
+Etapa 9 permanece PENDENTE.
+
+## v0.14 --- 29/09/2026
+
+### Refinamento visual da listagem e detalhes
+
+-   **Versão anterior:** v0.13
+-   **Nova versão:** v0.14
+-   **Data:** 29/09/2026
+-   **Motivo:** reduzir a densidade visual de evidências e status na tabela sem
+  remover informação do modelo ou dos detalhes.
+-   **Alteração:** sucesso é representado por ícone pequeno junto ao resultado;
+  `NA`/`ERROR` continuam distintos e textuais. Cabeçalhos foram compactados,
+  linhas e botão Detalhes reduzidos e painéis de fonte mostram resultado e status
+  técnico em campos separados. Classificação, motivo e detalhe foram preservados.
+-   **Impacto:** baixo; apresentação somente, sem alteração de regras,
+  classificação, consultas, dados, CSV, PDF ou arquitetura.
+-   **Decisão:** aprovada.
+
+## v0.13 --- 29/09/2026
+
+### Organização visual dos estados da análise
+
+-   **Versão anterior:** v0.12
+-   **Nova versão:** v0.13
+-   **Data:** 29/09/2026
+-   **Motivo:** aproveitar melhor a largura disponível antes e depois da análise
+  e separar visualmente a configuração da consulta dos resultados.
+-   **Alteração:** estado inicial horizontal para CNPJs e critérios; após análise,
+  resumo compacto, ação Nova análise, critérios recolhidos e resultados em largura
+  total. Controles responsivos e alturas de botões alinhadas; filtros, exportações,
+  detalhes e lógica de recálculo preservados.
+-   **Impacto:** baixo; reorganização visual sem alteração de consultas, regras
+  de classificação, critérios ou exportações.
+-   **Decisão:** aprovada.
+
+## v0.12 --- 29/09/2026
+
+### Critérios de risco configuráveis e recálculo local
+
+-   **Versão anterior:** v0.11
+-   **Nova versão:** v0.12
+-   **Data:** 29/09/2026
+-   **Motivo:** separar a coleta de dados da classificação configurável e permitir
+  reaplicar critérios sem consultar novamente as fontes.
+-   **Alteração:** adicionados critérios de RECUSAR/REVISAR, classificador puro
+  compartilhado e botão `Recalcular` local. `Analisar fornecedores` continua
+  consultando Receita, Autos e Embargos sempre, independentemente dos critérios;
+  a classificação é aplicada aos resultados coletados. Edição dos checkboxes não
+  recalcula automaticamente. Critérios padrão: RECUSAR por CNPJ inválido,
+  BAIXADA e INAPTA; REVISAR por Autos SIM e Embargos SIM. NOT_FOUND e informação
+  indeterminada iniciam desabilitados. `ERROR` e `NA` permanecem distintos. Sem
+  alteração da classificação após abrir/fechar detalhes; CSV/PDF continuam usando
+  a classificação atual dos resultados.
+-   **Impacto:** médio; classificação passou a depender dos critérios enviados
+  na análise ou explicitamente aplicados localmente, sem alteração nas consultas,
+  fontes, arquitetura ou regra de prioridade.
+-   **Decisão:** aprovada.
+
+### CHECKPOINT — CRITÉRIOS DE RISCO CONFIGURÁVEIS
+
+Status: CONCLUÍDO
+Data: 29/09/2026
+Commit: não realizado.
+Implementação: configuração simples de critérios no painel existente. A coleta
+e a classificação são separadas por `classifyRiskWithCriteria`; o backend aplica
+os critérios após concluir as consultas. O botão `Recalcular` usa apenas os
+resultados guardados no estado da análise e não faz `fetch`.
+Defaults: RECUSAR para CNPJ inválido, BAIXADA e INAPTA; REVISAR para Auto de
+Infração SIM e Área Embargada SIM. CNPJ `NOT_FOUND` e informação indeterminada
+(`NA`/`ERROR`) começam desabilitados e podem ser habilitados pelo usuário.
+Prioridade: critérios de RECUSAR são avaliados antes dos de REVISAR; sem critério
+acionado, APROVAR. Evidências, status, erros e detalhes coletados são preservados
+quando a classificação muda.
+Testes realizados: `npm test` — 95/95 aprovados; E2E — 9/9 aprovados; lint
+frontend e builds frontend/backend aprovados; `git diff --check` aprovado. E2E
+verifica edição sem recálculo automático, mudança de classificação ao clicar
+`Recalcular`, permanência do Auto nos detalhes e exatamente uma chamada de análise.
+Consulta das fontes: teste de rota com critérios desabilitados confirma que os
+clientes Receita e IBAMA continuam sendo chamados. A rota IBAMA delega à mesma
+IbamaService que consulta Autos e Embargos.
+Validação real: BUNGE ALIMENTOS S/A (`84046101000193`) consultada pela interface,
+BrasilAPI `SUCCESS`/ATIVA, Autos `SUCCESS`/SIM e Embargos `SUCCESS`/NÃO. Com Autos
+habilitado, resultado REVISAR; com Autos desabilitado e após `Recalcular`, APROVAR.
+O detalhe manteve Autos SIM/SUCCESS e Embargos NÃO/SUCCESS. Uma única requisição
+POST de análise foi observada; nenhuma chamada adicional ocorreu ao recalcular.
+Limitações: dados individuais e contagens dos registros IBAMA não são preservados
+no modelo atual. O critério opcional de indeterminação trata status `ERROR` como
+revisão quando habilitado, sem converter status/evidência em `NÃO`.
+Resultado: critérios editáveis aplicados somente sob ação explícita; recálculo
+local validado e consultas independentes dos critérios preservadas.
+
+## v0.11 --- 29/09/2026
+
+### Transparência de detalhes do fornecedor
+
+-   **Versão anterior:** v0.10
+-   **Nova versão:** v0.11
+-   **Data:** 29/09/2026
+-   **Motivo:** registrar a validação e cobertura da visualização dos dados
+  preservados pelas três fontes em cada fornecedor.
+-   **Alteração:** checkpoint documenta o painel de detalhes existente, novo
+  E2E de abertura/fechamento e distinção de `SUCCESS`, `NA` e `ERROR`, além da
+  validação real pela interface. Limitações dos campos não preservados pelo
+  contrato atual foram registradas sem ampliar o backend.
+-   **Impacto:** baixo; teste e documentação, sem mudança de classificação,
+  consultas, modelo de dados, backend, CSV, PDF ou arquitetura.
+-   **Decisão:** aprovada.
+
+## v0.11 --- 29/09/2026
+
+### Transparência de detalhes do fornecedor
+
+-   **Versão anterior:** v0.10
+-   **Nova versão:** v0.11
+-   **Data:** 29/09/2026
+-   **Motivo:** registrar a validação e cobertura da visualização dos dados
+  preservados pelas três fontes em cada fornecedor.
+-   **Alteração:** checkpoint documenta o painel de detalhes existente, novo
+  E2E de abertura/fechamento e distinção de `SUCCESS`, `NA` e `ERROR`, além da
+  validação real pela interface. Limitações dos campos não preservados pelo
+  contrato atual foram registradas sem ampliar o backend.
+-   **Impacto:** baixo; teste e documentação, sem mudança de classificação,
+  consultas, modelo de dados, backend, CSV, PDF ou arquitetura.
+-   **Decisão:** aprovada.
+
+## v0.10 --- 29/09/2026
+
+### Registro da validação real ponta a ponta
+
+-   **Versão anterior:** v0.9
+-   **Nova versão:** v0.10
+-   **Data:** 29/09/2026
+-   **Motivo:** registrar a execução real pela interface e a verificação dos
+  arquivos exportados com resultados das fontes públicas.
+-   **Alteração:** adicionada evidência para três CNPJs com BrasilAPI, Autos e
+  Embargos em `SUCCESS`; resultados consolidados vistos na tela e confirmados
+  nos downloads CSV/PDF. Downloads foram temporários e nenhum arquivo do projeto
+  foi alterado durante a validação.
+-   **Impacto:** baixo; registro de evidência, sem mudança de código, regras de
+  negócio, integrações ou contrato de dados.
+-   **Decisão:** aprovada.
+
+## v0.9 --- 29/09/2026
+
+### Registro final do PDF consolidado da Etapa 8
+
+-   **Versão anterior:** v0.8
+-   **Nova versão:** v0.9
+-   **Data:** 29/09/2026
+-   **Motivo:** registrar a atualização do PDF para o formato consolidado e as
+  evidências finais da Etapa 8.
+-   **Alteração:** checkpoint atualizado com tabela única de seis colunas em
+  A4 landscape, 48 registros em três páginas e cenário curto em uma página;
+  testes, E2E e consistência tela/CSV registrados. A validação visual foi
+  explicitamente marcada como não disponível, pois o Chromium iniciou download
+  em vez de renderizar o PDF. Nenhuma inspeção visual é alegada.
+-   **Impacto:** baixo; documentação da apresentação PDF e das evidências,
+  sem alteração de regras de negócio, backend, integrações ou CSV.
+-   **Decisão:** aprovada.
 
 ## v0.8 --- 28/09/2026
 
@@ -1309,6 +1550,92 @@ e fluxo somente-inválidos não produziram erros de console ou page errors.
 Pendências: Etapa 8 não iniciada; PDF permanece pendente.
 Decisões: backend, Risk Engine, contrato API e regras de classificação não foram
 alterados. Etapa 8 permanece pendente.
+
+------------------------------------------------------------------------
+
+CHECKPOINT — DETALHES DO FORNECEDOR
+
+Status: CONCLUÍDO
+Data: 29/09/2026
+Commit: não realizado.
+Objetivo: permitir a inspeção dos dados e estados das fontes já preservados
+para cada fornecedor, mantendo visível a classificação atual.
+Implementação: reutilizado o detalhe expansível inline existente na linha do
+fornecedor, com ação `Detalhes`/`Fechar`; nenhuma alteração de código de
+produção, endpoint, integração, classificação ou modelo de dados foi necessária.
+Dados exibidos: CNPJ informado e normalizado, razão social, situação, data de
+abertura, CNAE, endereço, telefone, status/erro da Receita e data da consulta;
+Autos e Áreas Embargadas exibem evidência `SIM`/`NÃO`/`NA`, status da fonte e
+erro quando existente. CNPJ inválido continua sem consultas e com classificação
+RECUSAR.
+Limitações do contrato atual: BrasilAPI não preserva nome fantasia, data da
+situação cadastral, natureza jurídica ou e-mail. IBAMA preserva somente
+evidência agregada por CNPJ, status e erro; registros individuais e contagens
+dos autos/embargos não são carregados pelo backend e, portanto, não são exibidos.
+Testes: `npm test` — 87/87 aprovados; E2E total — 8/8 aprovados, incluindo
+abertura/fechamento, dados das fontes, `SUCCESS`/`ERROR`/`NA`, inválido e
+classificação inalterada; lint frontend, builds frontend/backend e
+`git diff --check` aprovados.
+Validação real: BUNGE ALIMENTOS S/A (`84046101000193`) consultada pela interface
+sem interceptação. BrasilAPI `SUCCESS`/ATIVA; Autos `SUCCESS`/SIM; Áreas
+Embargadas `SUCCESS`/NÃO; detalhe mostrou os dados retornados e a classificação
+permaneceu APROVAR após abrir e fechar.
+Resultado: detalhes transparentes para o payload existente; não foi necessário
+alterar produção nem regras de negócio. Não houve consulta a registros
+individuais do IBAMA porque eles não estão preservados no modelo atual.
+
+------------------------------------------------------------------------
+
+CHECKPOINT — ORGANIZAÇÃO VISUAL DA ANÁLISE
+
+Status: CONCLUÍDO
+Data: 29/09/2026
+Commit: não realizado.
+Objetivo: separar visualmente entrada/configuração da análise concluída e liberar
+largura para os resultados sem redesenhar a aplicação.
+Implementação: antes da análise, CNPJs e critérios aparecem em uma composição
+horizontal responsiva com a ação primária Analisar fornecedores. Após a análise,
+a lista completa de CNPJs sai da lateral; são exibidos o total de fornecedores,
+Nova análise e os critérios em disclosure compacto. A tabela/resumo ocupa a
+largura disponível. Filtros, detalhes e exportações foram preservados; botões
+Nova análise, Recalcular, CSV e PDF usam alturas consistentes.
+Comportamento: Nova análise limpa resultados e entrada, retorna ao formulário e
+não consulta fontes. Analisar fornecedores continua sendo a única ação que
+consulta; alterar critérios não recalcula automaticamente e Recalcular continua
+local sobre os resultados existentes.
+Testes: `npm test` — 95/95 aprovados; E2E — 10/10 aprovados, incluindo largura
+total, resumo, critérios compactos, Nova análise sem consulta automática, nova
+consulta somente após Analyze, Recalcular, detalhes e exportações; lint frontend,
+builds frontend/backend e `git diff --check` aprovados.
+Validação visual: capturas dos estados inicial e pós-análise em desktop
+(1440×1000) e mobile (390×844) revisadas. `scrollWidth` correspondeu à largura
+da viewport em ambos os tamanhos; entrada se reorganiza em telas menores e a
+tabela mantém a largura desktop disponível.
+Resultado: os dois estados estão separados visualmente; nenhuma regra de risco,
+consulta, detalhe, CSV ou PDF foi alterada.
+
+------------------------------------------------------------------------
+
+CHECKPOINT — REFINAMENTO VISUAL DA LISTAGEM E DETALHES
+
+Status: CONCLUÍDO
+Data: 29/09/2026
+Commit: não realizado.
+Implementação: SUCCESS aparece como ícone pequeno junto a ATIVA/SIM/NÃO; NA e
+ERROR mantêm rótulos distintos e CNPJ inválido mantém aviso próprio. Ambiental
+continua exibindo `resultado_ambiental`. A classificação e o motivo seguem em
+destaque. Cabeçalhos simplificados para Embargos e Risco, células mais compactas
+e botão Detalhes reduzido com chevrons de abrir/fechar. Detalhes separam o valor
+de negócio do Status da consulta e continuam mostrando SUCCESS/ERROR.
+Testes: `npm test` — 95/95 aprovados; E2E — 10/10 aprovados; lint frontend,
+builds frontend/backend e `git diff --check` aprovados. E2E confirma detalhe,
+filtros, CSV/PDF e ausência de mudança nas classificações.
+Validação visual: listagem e detalhes revisados em capturas desktop 1440x1000 e
+mobile 390x844. Sem overflow horizontal; o botão Detalhes mediu 26 px de altura.
+Capturas temporárias em `/tmp`, não incluídas no repositório.
+Resultado: redução de caixas/badges na listagem, estados técnicos ainda
+identificáveis por ícone e texto, e conteúdo técnico completo preservado nos
+detalhes. Risk Engine, critérios, consultas e exportações não foram alterados.
 
 ------------------------------------------------------------------------
 

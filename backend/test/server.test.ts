@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { createApiServer, type IbamaLookup, type ReceitaLookup } from '../src/server.ts'
 import type { IbamaResult } from '../src/ibama.ts'
 import type { ReceitaResult, ReceitaStatus } from '../src/brasilapi.ts'
+import type { RiskCriteria } from '../../shared/risk-engine.ts'
 
 function result(cnpj: string, status: ReceitaStatus): ReceitaResult {
   return {
@@ -146,6 +147,57 @@ test('rota IBAMA envia somente válidos únicos e preserva status por fonte', as
         status_ibama_embargo: 'ERROR',
         error_ibama_embargo: 'Fonte indisponível.',
         resultado_ambiental: 'NÃO',
+      }))
+    },
+  )
+})
+
+test('critérios desabilitados não impedem consultas às três fontes', async () => {
+  const receitaCalls: string[] = []
+  const ibamaCalls: string[][] = []
+  const allCriteriaDisabled: RiskCriteria = {
+    rejectInvalidCnpj: false,
+    rejectBaixada: false,
+    rejectInapta: false,
+    rejectReceitaNotFound: false,
+    reviewIbamaAuto: false,
+    reviewIbamaEmbargo: false,
+    reviewUndetermined: false,
+  }
+
+  await withServer(
+    async (cnpj) => {
+      receitaCalls.push(cnpj)
+      return {
+        ...result(cnpj, 'SUCCESS'),
+        razao_social: 'Empresa de teste',
+        situacao_cadastral: 'ATIVA',
+      }
+    },
+    async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/ibama/cnpjs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cnpjs: ['11222333000181'], riskCriteria: allCriteriaDisabled }),
+      })
+      const payload = await response.json() as { results: (IbamaResult & { classificacao_risco: string })[] }
+
+      assert.equal(response.status, 200)
+      assert.deepEqual(receitaCalls, ['11222333000181'])
+      assert.deepEqual(ibamaCalls, [['11222333000181']])
+      assert.equal(payload.results[0]?.ibama_auto_infracao, 'SIM')
+      assert.equal(payload.results[0]?.ibama_embargo, 'SIM')
+      assert.equal(payload.results[0]?.classificacao_risco, 'APROVAR')
+    },
+    async (cnpjs) => {
+      ibamaCalls.push(cnpjs)
+      return cnpjs.map((cnpj) => ({
+        cnpj,
+        ibama_auto_infracao: 'SIM',
+        status_ibama_auto: 'SUCCESS',
+        ibama_embargo: 'SIM',
+        status_ibama_embargo: 'SUCCESS',
+        resultado_ambiental: 'SIM',
       }))
     },
   )

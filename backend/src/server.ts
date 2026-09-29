@@ -8,6 +8,7 @@ import {
 import { IbamaService, type IbamaResult } from './ibama.js'
 import { mergeResults } from './merge.js'
 import { classifyRisk } from './risk-engine.js'
+import { DEFAULT_RISK_CRITERIA, isRiskCriteria } from '../../shared/risk-engine.js'
 
 export type ReceitaLookup = (cnpj: string) => Promise<ReceitaResult>
 export type IbamaLookup = (cnpjs: string[]) => Promise<IbamaResult[]>
@@ -120,11 +121,18 @@ export function createApiServer(
         return
       }
 
+      const requestedCriteria = (body as { riskCriteria?: unknown }).riskCriteria
+      const riskCriteria = requestedCriteria === undefined ? DEFAULT_RISK_CRITERIA : requestedCriteria
+      if (!isRiskCriteria(riskCriteria)) {
+        sendJson(response, 400, { error: 'A configuração dos critérios de risco é inválida.' })
+        return
+      }
+
       const batch = parseCnpjLines(cnpjs.join('\n'))
       const validCnpjs = batch.valid.map((entry) => entry.cnpj)
       const invalid = batch.invalid.map((entry) => ({
         ...entry,
-        ...classifyRisk({ cnpj: entry.cnpj }),
+        ...classifyRisk({ cnpj: entry.cnpj }, riskCriteria),
       }))
       try {
         const [receitaResults, ibamaResults] = validCnpjs.length > 0
@@ -133,7 +141,7 @@ export function createApiServer(
               ibamaLookup(validCnpjs),
             ])
           : [[], []]
-        const results = mergeResults(validCnpjs, receitaResults, ibamaResults)
+        const results = mergeResults(validCnpjs, receitaResults, ibamaResults, undefined, riskCriteria)
         sendJson(response, 200, {
           results,
           invalid,

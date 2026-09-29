@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import type { ReceitaResult, ReceitaStatus } from '../src/brasilapi.ts'
 import type { IbamaEvidence, IbamaResult, IbamaSourceStatus } from '../src/ibama.ts'
 import { mergeResults } from '../src/merge.ts'
+import { DEFAULT_RISK_CRITERIA } from '../../shared/risk-engine.ts'
 
 const FIRST_CNPJ = '11222333000181'
 const SECOND_CNPJ = '00000000000191'
@@ -76,6 +77,7 @@ test('Autos SIM sem embargo confirmado preserva evidência sem alterar classific
     [receitaResult(FIRST_CNPJ)],
     [ibamaResult(FIRST_CNPJ, { auto: 'SIM', embargo: 'NÃO', environmental: 'SIM' })],
     CONSULTED_AT,
+    { ...DEFAULT_RISK_CRITERIA, reviewIbamaAuto: false },
   )
 
   assert.equal(result?.ibama_auto_infracao, 'SIM')
@@ -84,7 +86,7 @@ test('Autos SIM sem embargo confirmado preserva evidência sem alterar classific
   assert.equal(result?.classificacao_risco, 'APROVAR')
 })
 
-test('Autos NÃO não converte Embargos ERROR em ausência de embargo', () => {
+test('Autos NÃO mantém Embargos ERROR como NA e revisa quando o critério NA está habilitado', () => {
   const [result] = mergeResults(
     [FIRST_CNPJ],
     [receitaResult(FIRST_CNPJ)],
@@ -95,6 +97,7 @@ test('Autos NÃO não converte Embargos ERROR em ausência de embargo', () => {
       environmental: 'NÃO',
     })],
     CONSULTED_AT,
+    { ...DEFAULT_RISK_CRITERIA, reviewUndetermined: true },
   )
 
   assert.equal(result?.status_ibama_auto, 'SUCCESS')
@@ -140,6 +143,7 @@ test('ambos os erros IBAMA preservam NA e levam a REVISAR', () => {
       environmental: 'NA',
     })],
     CONSULTED_AT,
+    { ...DEFAULT_RISK_CRITERIA, reviewUndetermined: true },
   )
 
   assert.equal(result?.status_ibama_auto, 'ERROR')
@@ -157,6 +161,7 @@ test('Receita NOT_FOUND é mantido e classificado como RECUSAR', () => {
     [receitaResult(FIRST_CNPJ, 'NOT_FOUND', null)],
     [ibamaResult(FIRST_CNPJ)],
     CONSULTED_AT,
+    { ...DEFAULT_RISK_CRITERIA, rejectReceitaNotFound: true },
   )
 
   assert.equal(result?.status_receita, 'NOT_FOUND')

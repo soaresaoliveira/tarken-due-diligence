@@ -37,7 +37,7 @@ export type ConsolidatedResult = {
 }
 
 export type InvalidResult = CnpjEntry & {
-  classificacao_risco: 'RECUSAR'
+  classificacao_risco: RiskClassification
   motivo_classificacao: string
 }
 

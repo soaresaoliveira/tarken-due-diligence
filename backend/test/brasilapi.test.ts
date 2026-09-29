@@ -52,6 +52,19 @@ test('normaliza os campos cadastrais recebidos em HTTP 200', async () => {
   assert.equal(result.telefone, '(11) 1234-5678')
 })
 
+test('envia User-Agent identificável ao consultar a BrasilAPI', async () => {
+  let userAgent: string | null = null
+  const result = await lookupBrasilApi(VALID_CNPJ, {
+    fetchImpl: async (_input, init) => {
+      userAgent = new Headers(init?.headers).get('User-Agent')
+      return jsonResponse({ cnpj: VALID_CNPJ })
+    },
+  })
+
+  assert.equal(userAgent, 'Tarken-Due-Diligence/1.0')
+  assert.equal(result.status, 'SUCCESS')
+})
+
 test('retorna NOT_FOUND para HTTP 404 sem retry', async () => {
   let calls = 0
   const result = await lookupBrasilApi(VALID_CNPJ, {

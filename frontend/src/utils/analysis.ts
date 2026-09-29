@@ -5,6 +5,7 @@ import type {
   RiskFilter,
   SupplierRow,
 } from '../types/analysis.ts'
+import { classifyRiskWithCriteria, type RiskCriteria } from '../../../shared/risk-engine.ts'
 
 export function composeSupplierRows(
   batch: CnpjBatch,
@@ -68,4 +69,28 @@ export function filterSupplierRows(rows: SupplierRow[], filter: RiskFilter): Sup
   return filter === 'TODOS'
     ? rows
     : rows.filter((row) => row.classificacao_risco === filter)
+}
+
+export function reclassifySupplierRows(rows: SupplierRow[], criteria: RiskCriteria): SupplierRow[] {
+  return rows.map((row) => {
+    const result = row.result
+    const decision = classifyRiskWithCriteria({
+      cnpj: row.input.cnpj,
+      ...(result ? {
+        status_receita: result.status_receita,
+        situacao_cadastral: result.situacao_cadastral,
+        ibama_auto_infracao: result.ibama_auto_infracao,
+        status_ibama_auto: result.status_ibama_auto,
+        ibama_embargo: result.ibama_embargo,
+        status_ibama_embargo: result.status_ibama_embargo,
+      } : {}),
+    }, criteria)
+
+    return {
+      ...row,
+      ...decision,
+      ...(result ? { result: { ...result, ...decision } } : {}),
+      ...(row.invalid ? { invalid: { ...row.invalid, ...decision } } : {}),
+    }
+  })
 }

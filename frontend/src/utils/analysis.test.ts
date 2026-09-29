@@ -4,9 +4,11 @@ import { parseCnpjLines } from './cnpj.ts'
 import {
   composeSupplierRows,
   filterSupplierRows,
+  reclassifySupplierRows,
   summarizeSupplierRows,
 } from './analysis.ts'
 import type { AnalysisResponse, ConsolidatedResult } from '../types/analysis.ts'
+import { DEFAULT_RISK_CRITERIA } from '../../../shared/risk-engine.ts'
 
 const APPROVE_CNPJ = '11222333000181'
 const REVIEW_CNPJ = '00000000000191'
@@ -113,4 +115,30 @@ test('falha explicitamente se o contrato omitir resultado de fonte', () => {
     () => composeSupplierRows(batch, { ...createResponse(), results: [] }),
     /Resultado consolidado ausente/,
   )
+})
+
+test('reclassifica localmente preservando os dados e status coletados', () => {
+  const batch = parseCnpjLines(APPROVE_CNPJ)
+  const originalRows = composeSupplierRows(batch, {
+    ...createResponse(),
+    results: [consolidatedResult(APPROVE_CNPJ, 'REVISAR')],
+    invalid: [],
+    duplicates: [],
+  })
+  const originalResult = originalRows[0]?.result
+  assert.ok(originalResult)
+
+  const rows = reclassifySupplierRows(originalRows, {
+    ...DEFAULT_RISK_CRITERIA,
+    reviewIbamaAuto: false,
+  })
+
+  assert.equal(rows[0]?.classificacao_risco, 'APROVAR')
+  assert.equal(rows[0]?.result?.classificacao_risco, 'APROVAR')
+  assert.equal(rows[0]?.result?.ibama_auto_infracao, originalResult.ibama_auto_infracao)
+  assert.equal(rows[0]?.result?.ibama_embargo, originalResult.ibama_embargo)
+  assert.equal(rows[0]?.result?.status_ibama_auto, originalResult.status_ibama_auto)
+  assert.equal(rows[0]?.result?.status_ibama_embargo, originalResult.status_ibama_embargo)
+  assert.equal(rows[0]?.result?.razao_social, originalResult.razao_social)
+  assert.equal(originalRows[0]?.classificacao_risco, 'REVISAR')
 })

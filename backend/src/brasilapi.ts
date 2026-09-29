@@ -132,7 +132,10 @@ export async function lookupBrasilApi(
     let response: Response
 
     try {
-      response = await fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs) })
+      response = await fetchImpl(url, {
+        headers: { 'User-Agent': 'Tarken-Due-Diligence/1.0' },
+        signal: AbortSignal.timeout(timeoutMs),
+      })
     } catch (error) {
       if (attempt < MAX_ATTEMPTS && isRetryableNetworkError(error)) {
         await wait(retryDelayMs)
